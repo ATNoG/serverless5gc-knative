@@ -16,7 +16,7 @@ bin/
 Thumbs.db
 
 # Evaluation results (large data files)
-eval/results/
+#eval/results/
 
 # Local config
 CLAUDE.md
