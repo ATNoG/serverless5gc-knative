@@ -241,7 +241,7 @@ This creates a `monitoring` namespace with Prometheus exposed at:
 
 It scrapes procedure function `/metrics` endpoints and kubelet cAdvisor metrics.
 
-Run a cluster-local HTTP evaluation without an external load generator VM:
+Run a single cluster-local HTTP evaluation without an external load generator VM:
 
 ```bash
 eval/scripts/run-knative-cluster-eval.sh low 1
@@ -252,6 +252,45 @@ Results are written to:
 ```text
 eval/results/serverless-cluster/<scenario>/run<run>/
 ```
+
+Run the full Knative evaluation suite and generate the report:
+
+```bash
+python3 -m pip install -r eval/analysis/requirements.txt
+RUNS=1 eval/scripts/run-knative-evaluation-suite.sh
+```
+
+The suite runs `idle`, `low`, `medium`, `high`, and `burst` by default. Override
+the set or duration when iterating:
+
+```bash
+SCENARIOS="low burst" EVAL_DURATION_MINUTES=2 RUNS=1 \
+  eval/scripts/run-knative-evaluation-suite.sh
+```
+
+For small clusters, the `burst` scenario can temporarily saturate the API server
+or Knative control plane. The evaluator gives jobs an extra 15 minutes by
+default before failing. Increase that headroom if needed:
+
+```bash
+SCENARIOS="burst" EVAL_WAIT_EXTRA_SECONDS=1800 RUNS=1 \
+  eval/scripts/run-knative-evaluation-suite.sh
+```
+
+If a run times out, diagnostics are saved in that run directory as
+`loadgen.log`, `job.describe.txt`, and `pods.txt`.
+
+The reporting step is a single seaborn-based Python script:
+
+```bash
+python3 eval/analysis/seaborn_report.py eval/results
+```
+
+It writes:
+
+- `eval/results/summary.csv`
+- `eval/results/function_metrics.csv`
+- PNG charts in `eval/results/charts/`
 
 HTTP mode through Knative ingress:
 

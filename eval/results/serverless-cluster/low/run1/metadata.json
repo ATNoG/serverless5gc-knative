@@ -1,0 +1,11 @@
+{
+  "scenario": "low",
+  "target": "serverless-cluster",
+  "run": 1,
+  "start_time": "2026-06-13T15:56:32+01:00",
+  "end_time": "2026-06-13T16:06:35+01:00",
+  "ue_count": 100,
+  "registration_rate": 1,
+  "pdu_sessions_per_ue": 1,
+  "duration_minutes": 10
+}

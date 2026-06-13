@@ -11,6 +11,7 @@ PROM_NAMESPACE="${PROM_NAMESPACE:-monitoring}"
 PROM_SERVICE="${PROM_SERVICE:-prometheus}"
 LOAD_IMAGE="${LOAD_IMAGE:-curlimages/curl:8.11.1}"
 CLUSTER_DOMAIN="${CLUSTER_DOMAIN:-cluster.local}"
+EVAL_WAIT_EXTRA_SECONDS="${EVAL_WAIT_EXTRA_SECONDS:-900}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -127,7 +128,15 @@ spec:
 YAML
 
 kubectl apply -f "$TMP_JOB"
-kubectl wait job/"$JOB_NAME" -n "$NAMESPACE" --for=condition=Complete --timeout="$((DURATION * 60 + UE_COUNT / (REG_RATE > 0 ? REG_RATE : 1) + 300))s"
+WAIT_TIMEOUT="$((DURATION * 60 + UE_COUNT / (REG_RATE > 0 ? REG_RATE : 1) + EVAL_WAIT_EXTRA_SECONDS))s"
+if ! kubectl wait job/"$JOB_NAME" -n "$NAMESPACE" --for=condition=Complete --timeout="$WAIT_TIMEOUT"; then
+    kubectl logs job/"$JOB_NAME" -n "$NAMESPACE" > "${RESULTS_DIR}/loadgen.log" 2>&1 || true
+    kubectl describe job "$JOB_NAME" -n "$NAMESPACE" > "${RESULTS_DIR}/job.describe.txt" 2>&1 || true
+    kubectl get pods -n "$NAMESPACE" -l job-name="$JOB_NAME" -o wide > "${RESULTS_DIR}/pods.txt" 2>&1 || true
+    echo "ERROR: Evaluation job ${JOB_NAME} did not complete within ${WAIT_TIMEOUT}." >&2
+    echo "Diagnostics written to ${RESULTS_DIR}" >&2
+    exit 1
+fi
 
 END_TIME="$(date -Iseconds)"
 echo "$END_TIME" > "${RESULTS_DIR}/end_time"

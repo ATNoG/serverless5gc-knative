@@ -1,0 +1,11 @@
+{
+  "scenario": "idle",
+  "target": "serverless-cluster",
+  "run": 1,
+  "start_time": "2026-06-13T15:46:10+01:00",
+  "end_time": "2026-06-13T15:56:15+01:00",
+  "ue_count": 0,
+  "registration_rate": 0,
+  "pdu_sessions_per_ue": 0,
+  "duration_minutes": 10
+}
