@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"os"
 
-	handler "github.com/openfaas/templates-sdk/go-http"
+	handler "github.com/haidinhtuan/serverless5gc/pkg/function"
 	"github.com/haidinhtuan/serverless5gc/pkg/models"
 	"github.com/haidinhtuan/serverless5gc/pkg/nas"
 	"github.com/haidinhtuan/serverless5gc/pkg/sbi"
@@ -49,7 +49,7 @@ func init() {
 
 // DeregistrationRequest is the JSON body for UE deregistration.
 type DeregistrationRequest struct {
-	SUPI            string `json:"supi"`
+	SUPI               string `json:"supi"`
 	DeregistrationType uint8  `json:"deregistration_type,omitempty"` // TS 24.501 Section 9.11.3.20
 }
 

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	handler "github.com/openfaas/templates-sdk/go-http"
+	handler "github.com/haidinhtuan/serverless5gc/pkg/function"
 	"github.com/haidinhtuan/serverless5gc/pkg/models"
 	"github.com/haidinhtuan/serverless5gc/pkg/state"
 )
@@ -39,11 +39,11 @@ type PolicyCreateRequest struct {
 
 // PolicyDecision per TS 29.512 Section 5.6.2.2 (SmPolicyDecision).
 type PolicyDecision struct {
-	PolicyID  string                `json:"policy_id"`
-	QFI       uint8                 `json:"qfi"`
-	AMBRUL    uint64                `json:"ambr_ul"`
-	AMBRDL    uint64                `json:"ambr_dl"`
-	FiveQI    int                   `json:"5qi"`
+	PolicyID  string                 `json:"policy_id"`
+	QFI       uint8                  `json:"qfi"`
+	AMBRUL    uint64                 `json:"ambr_ul"`
+	AMBRDL    uint64                 `json:"ambr_dl"`
+	FiveQI    int                    `json:"5qi"`
 	SessRules map[string]SessionRule `json:"sess_rules,omitempty"`
 }
 
@@ -63,19 +63,19 @@ type AMBR struct {
 var defaultPolicies = map[int32]PolicyDecision{
 	1: { // eMBB: 5QI=9 (best effort internet), QFI=1 (default flow)
 		QFI:    1,
-		AMBRUL: 1000000,  // 1 Mbps
-		AMBRDL: 5000000,  // 5 Mbps
+		AMBRUL: 1000000, // 1 Mbps
+		AMBRDL: 5000000, // 5 Mbps
 		FiveQI: 9,
 	},
 	2: { // URLLC: 5QI=7 (voice/video), low latency
 		QFI:    7,
-		AMBRUL: 500000,   // 500 kbps
+		AMBRUL: 500000, // 500 kbps
 		AMBRDL: 500000,
 		FiveQI: 7,
 	},
 	3: { // mMTC: 5QI=9, low throughput for IoT
 		QFI:    9,
-		AMBRUL: 100000,   // 100 kbps
+		AMBRUL: 100000, // 100 kbps
 		AMBRDL: 100000,
 		FiveQI: 9,
 	},

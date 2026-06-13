@@ -3,12 +3,6 @@ global:
   evaluation_interval: 5s
 
 scrape_configs:
-  # OpenFaaS gateway metrics
-  - job_name: 'openfaas'
-    static_configs:
-      - targets: ['VM1_IP:8080']
-    metrics_path: /metrics
-
   # cAdvisor for container metrics (all VMs)
   - job_name: 'cadvisor-serverless'
     static_configs:

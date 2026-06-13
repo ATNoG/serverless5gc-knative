@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	handler "github.com/openfaas/templates-sdk/go-http"
+	handler "github.com/haidinhtuan/serverless5gc/pkg/function"
 	"github.com/haidinhtuan/serverless5gc/pkg/models"
 	"github.com/haidinhtuan/serverless5gc/pkg/state"
 )
@@ -140,8 +140,8 @@ func TestHandle_SliceSelect_CustomConfigFromStore(t *testing.T) {
 
 	body, _ := json.Marshal(SliceSelectRequest{
 		RequestedNSSAI: []models.SNSSAI{
-			{SST: 5, SD: "CUSTOM"},  // allowed (custom)
-			{SST: 1, SD: "010203"},  // rejected (not in custom config)
+			{SST: 5, SD: "CUSTOM"}, // allowed (custom)
+			{SST: 1, SD: "010203"}, // rejected (not in custom config)
 		},
 	})
 

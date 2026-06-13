@@ -12,9 +12,10 @@ import (
 	"sync"
 	"time"
 
-	handler "github.com/openfaas/templates-sdk/go-http"
+	handler "github.com/haidinhtuan/serverless5gc/pkg/function"
 	"github.com/haidinhtuan/serverless5gc/pkg/models"
 	"github.com/haidinhtuan/serverless5gc/pkg/pfcp"
+	"github.com/haidinhtuan/serverless5gc/pkg/sbi"
 	"github.com/haidinhtuan/serverless5gc/pkg/state"
 )
 
@@ -37,8 +38,8 @@ var SBI SBICaller
 // PFCP is the PFCP client for UPF communication. Override in tests via SetPFCP.
 var PFCP PFCPSessionManager
 
-func SetStore(s state.KVStore) { Store = s }
-func SetSBI(s SBICaller) { SBI = s }
+func SetStore(s state.KVStore)     { Store = s }
+func SetSBI(s SBICaller)           { SBI = s }
 func SetPFCP(p PFCPSessionManager) { PFCP = p }
 
 func init() {
@@ -50,20 +51,21 @@ func init() {
 		addr = "localhost:6379"
 	}
 	Store = state.NewRedisStore(addr)
+	SBI = sbi.NewClient()
 }
 
 // CreateSMContextRequest per TS 29.502 Section 6.1.6.2.4 (Nsmf_PDUSession_CreateSMContext).
 // In production this would carry the NAS PDU Session Establishment Request (TS 24.501 Section 8.3.1)
 // containing PDU Session ID, PDU Session Type, SSC Mode, and requested QoS rules.
 type CreateSMContextRequest struct {
-	SUPI       string        `json:"supi"`
-	SNSSAI     models.SNSSAI `json:"snssai"`
-	DNN        string        `json:"dnn"`
-	PDUType    string        `json:"pdu_session_type,omitempty"` // TS 24.501: IPv4, IPv6, IPv4v6
-	SSCMode    uint8         `json:"ssc_mode,omitempty"`         // TS 24.501: SSC mode 1/2/3
-	SessionID  uint8         `json:"pdu_session_id,omitempty"`   // TS 24.501: 1-15
-	SessionAMBRUL uint64    `json:"session_ambr_ul,omitempty"`   // from subscription or request
-	SessionAMBRDL uint64    `json:"session_ambr_dl,omitempty"`
+	SUPI          string        `json:"supi"`
+	SNSSAI        models.SNSSAI `json:"snssai"`
+	DNN           string        `json:"dnn"`
+	PDUType       string        `json:"pdu_session_type,omitempty"` // TS 24.501: IPv4, IPv6, IPv4v6
+	SSCMode       uint8         `json:"ssc_mode,omitempty"`         // TS 24.501: SSC mode 1/2/3
+	SessionID     uint8         `json:"pdu_session_id,omitempty"`   // TS 24.501: 1-15
+	SessionAMBRUL uint64        `json:"session_ambr_ul,omitempty"`  // from subscription or request
+	SessionAMBRDL uint64        `json:"session_ambr_dl,omitempty"`
 }
 
 // CreateSMContextResponse per TS 29.502 Section 6.1.6.2.4.
@@ -88,11 +90,11 @@ type SmPolicyCreateRequest struct {
 
 // SmPolicyDecision returned from PCF per TS 29.512 Section 5.6.2.2.
 type SmPolicyDecision struct {
-	PolicyID string        `json:"policy_id"`
-	QFI      uint8         `json:"qfi"`
-	AMBRUL   uint64        `json:"ambr_ul"`
-	AMBRDL   uint64        `json:"ambr_dl"`
-	FiveQI   int           `json:"5qi"`
+	PolicyID  string                 `json:"policy_id"`
+	QFI       uint8                  `json:"qfi"`
+	AMBRUL    uint64                 `json:"ambr_ul"`
+	AMBRDL    uint64                 `json:"ambr_dl"`
+	FiveQI    int                    `json:"5qi"`
 	SessRules map[string]SessionRule `json:"sess_rules,omitempty"`
 }
 
@@ -111,8 +113,8 @@ type AMBR struct {
 // per TS 29.244 Section 5.21.
 var (
 	ipPoolMu     sync.Mutex
-	ipPoolSubnet uint32 // current third-octet (0-255)
-	ipPoolHost   uint32 = 1  // current fourth-octet (1-254)
+	ipPoolSubnet uint32     // current third-octet (0-255)
+	ipPoolHost   uint32 = 1 // current fourth-octet (1-254)
 )
 
 // IPPoolPrefix is the first two octets for UE address allocation (configurable via UE_IP_POOL env).

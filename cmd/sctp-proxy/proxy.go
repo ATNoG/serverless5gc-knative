@@ -17,19 +17,19 @@ import (
 	"github.com/free5gc/nas/nasType"
 	"github.com/free5gc/nas/security"
 	"github.com/free5gc/ngap/ngapType"
-	"github.com/ishidawataru/sctp"
 	"github.com/haidinhtuan/serverless5gc/pkg/crypto"
 	"github.com/haidinhtuan/serverless5gc/pkg/nas"
 	ngapCodec "github.com/haidinhtuan/serverless5gc/pkg/ngap"
 	"github.com/haidinhtuan/serverless5gc/pkg/state"
+	"github.com/ishidawataru/sctp"
 )
 
 // UE states for the per-UE state machine.
 const (
-	UEStateIdle            = "IDLE"
-	UEStateAuthSent        = "AUTH_SENT"
-	UEStateSMCSent         = "SMC_SENT"
-	UEStateRegistered      = "REGISTERED"
+	UEStateIdle             = "IDLE"
+	UEStateAuthSent         = "AUTH_SENT"
+	UEStateSMCSent          = "SMC_SENT"
+	UEStateRegistered       = "REGISTERED"
 	UEStatePDUSessionActive = "PDU_SESSION_ACTIVE"
 )
 
@@ -39,8 +39,8 @@ type UEContext struct {
 	State       string
 	AMFUeNgapID int64
 	RANUeNgapID int64
-	XRES        []byte // stored for auth verification
-	DLSeqNum    byte   // NAS downlink sequence number for security header
+	XRES        []byte                    // stored for auth verification
+	DLSeqNum    byte                      // NAS downlink sequence number for security header
 	KAUSF       []byte                    // anchor key from authentication
 	KNASint     []byte                    // NAS integrity key (128-EIA2)
 	KNASenc     []byte                    // NAS encryption key (128-EEA0 = null)
@@ -49,7 +49,7 @@ type UEContext struct {
 }
 
 // CoreBackend abstracts the 5GC function call interface.
-// HTTPBackend calls OpenFaaS functions; future DIDComm backends can implement this.
+// HTTPBackend calls Knative procedure services; future transports can implement this.
 type CoreBackend interface {
 	AuthInitiate(ctx context.Context, supi string) (*AuthInitiateResponse, error)
 	Register(ctx context.Context, req *RegisterRequest) (*RegisterResponse, error)
@@ -88,19 +88,19 @@ type PDUSessionResponse struct {
 	PDUAddress string `json:"pdu_address"`
 }
 
-// HTTPBackend calls OpenFaaS functions over HTTP.
+// HTTPBackend calls Knative procedure services over HTTP.
 type HTTPBackend struct {
-	gatewayURL string
-	client     *http.Client
+	urlTemplate string
+	client      *http.Client
 }
 
-func NewHTTPBackend(gatewayURL string) *HTTPBackend {
-	return &HTTPBackend{gatewayURL: gatewayURL, client: &http.Client{}}
+func NewHTTPBackend(urlTemplate string) *HTTPBackend {
+	return &HTTPBackend{urlTemplate: urlTemplate, client: &http.Client{}}
 }
 
 func (b *HTTPBackend) AuthInitiate(_ context.Context, supi string) (*AuthInitiateResponse, error) {
 	payload, _ := json.Marshal(map[string]string{"supi": supi})
-	resp, err := b.client.Post(b.gatewayURL+"amf-auth-initiate", "application/json", bytes.NewReader(payload))
+	resp, err := b.client.Post(b.functionURL("amf-auth-initiate"), "application/json", bytes.NewReader(payload))
 	if err != nil {
 		return nil, fmt.Errorf("amf-auth-initiate: %w", err)
 	}
@@ -118,7 +118,7 @@ func (b *HTTPBackend) AuthInitiate(_ context.Context, supi string) (*AuthInitiat
 
 func (b *HTTPBackend) Register(_ context.Context, req *RegisterRequest) (*RegisterResponse, error) {
 	payload, _ := json.Marshal(req)
-	resp, err := b.client.Post(b.gatewayURL+"amf-initial-registration", "application/json", bytes.NewReader(payload))
+	resp, err := b.client.Post(b.functionURL("amf-initial-registration"), "application/json", bytes.NewReader(payload))
 	if err != nil {
 		return nil, fmt.Errorf("amf-initial-registration: %w", err)
 	}
@@ -136,7 +136,7 @@ func (b *HTTPBackend) Register(_ context.Context, req *RegisterRequest) (*Regist
 
 func (b *HTTPBackend) PDUSessionCreate(_ context.Context, req *PDUSessionRequest) (*PDUSessionResponse, error) {
 	payload, _ := json.Marshal(req)
-	resp, err := b.client.Post(b.gatewayURL+"smf-pdu-session-create", "application/json", bytes.NewReader(payload))
+	resp, err := b.client.Post(b.functionURL("smf-pdu-session-create"), "application/json", bytes.NewReader(payload))
 	if err != nil {
 		return nil, fmt.Errorf("smf-pdu-session-create: %w", err)
 	}
@@ -152,7 +152,11 @@ func (b *HTTPBackend) PDUSessionCreate(_ context.Context, req *PDUSessionRequest
 	return &result, nil
 }
 
-// SCTPProxy bridges SCTP/NGAP from UERANSIM to HTTP/JSON OpenFaaS functions
+func (b *HTTPBackend) functionURL(functionName string) string {
+	return fmt.Sprintf(b.urlTemplate, functionName)
+}
+
+// SCTPProxy bridges SCTP/NGAP from UERANSIM to HTTP/JSON procedure services
 // via a per-UE state machine.
 type SCTPProxy struct {
 	listenAddr string
@@ -162,7 +166,7 @@ type SCTPProxy struct {
 	sst        byte
 	sd         []byte
 
-	ueMap             sync.Map // map[int64]*UEContext keyed by RAN-UE-NGAP-ID
+	ueMap              sync.Map // map[int64]*UEContext keyed by RAN-UE-NGAP-ID
 	amfUeNgapIDCounter int64
 }
 
@@ -636,36 +640,36 @@ func buildPDUSessionAcceptNAS(pduSessionID uint8, pti uint8) []byte {
 	// Format: EPD(1) + PSID(1) + PTI(1) + MsgType(1) + SSCmode|PDUtype(1) +
 	//         AuthQoSRules(LV-E) + SessionAMBR(LV) + [PDUAddress(TLV)]
 	inner := []byte{
-		nas.EPD5GSM,       // EPD
-		pduSessionID,      // PDU Session ID
-		pti,               // PTI (echoed from request)
-		0xC2,              // PDU Session Establishment Accept message type
-		0x11,              // SSC mode 1 (bits 5-7) | PDU session type IPv4 (bits 1-3)
+		nas.EPD5GSM,  // EPD
+		pduSessionID, // PDU Session ID
+		pti,          // PTI (echoed from request)
+		0xC2,         // PDU Session Establishment Accept message type
+		0x11,         // SSC mode 1 (bits 5-7) | PDU session type IPv4 (bits 1-3)
 		// Authorized QoS rules (LV-E: 2-byte length + value)
-		0x00, 0x06,        // QoS rules length = 6
-		0x01,              // QoS rule ID = 1
-		0x00, 0x03,        // Rule length = 3 (2 bytes per TS 24.501 Table 9.11.4.13.1)
-		0x21,              // Rule operation: create new QoS rule (001), DQR=0, num filters=1 (0001)
-		0x01,              // Packet filter: match all (direction=bidirectional)
-		0x06,              // QFI = 6
+		0x00, 0x06, // QoS rules length = 6
+		0x01,       // QoS rule ID = 1
+		0x00, 0x03, // Rule length = 3 (2 bytes per TS 24.501 Table 9.11.4.13.1)
+		0x21, // Rule operation: create new QoS rule (001), DQR=0, num filters=1 (0001)
+		0x01, // Packet filter: match all (direction=bidirectional)
+		0x06, // QFI = 6
 		// Session-AMBR (LV: 1-byte length + value)
-		0x06,              // Session-AMBR length = 6
-		0x01,              // DL unit: kbps
-		0x00, 0x00,        // DL session AMBR
-		0x01,              // UL unit: kbps
-		0x00, 0x00,        // UL session AMBR
+		0x06,       // Session-AMBR length = 6
+		0x01,       // DL unit: kbps
+		0x00, 0x00, // DL session AMBR
+		0x01,       // UL unit: kbps
+		0x00, 0x00, // UL session AMBR
 		// PDU address (optional TLV, IEI=0x29)
-		0x29, 0x05, 0x01,  // IEI + length=5 + PDU addr type=IPv4
+		0x29, 0x05, 0x01, // IEI + length=5 + PDU addr type=IPv4
 		0x0A, 0x0A, 0x00, 0x01, // IP: 10.10.0.1
 	}
 
 	// Outer: DL NAS Transport wrapping the inner message
 	containerLen := len(inner)
 	outer := []byte{
-		nas.EPD5GMM,                        // EPD
-		nas.SecurityHeaderPlain,            // Security header: plain (will be wrapped by caller)
-		nas.MsgTypeDLNASTransport,          // DL NAS Transport message type
-		0x01,                               // Payload container type: N1 SM (lower nibble) + spare (upper)
+		nas.EPD5GMM,                                 // EPD
+		nas.SecurityHeaderPlain,                     // Security header: plain (will be wrapped by caller)
+		nas.MsgTypeDLNASTransport,                   // DL NAS Transport message type
+		0x01,                                        // Payload container type: N1 SM (lower nibble) + spare (upper)
 		byte(containerLen >> 8), byte(containerLen), // Payload container length (LV-E)
 	}
 	outer = append(outer, inner...)

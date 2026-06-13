@@ -58,7 +58,7 @@ def process_file(filepath):
         # Determine the "function" of interest.
         # We want Registration Latency. 
         # In serverless5gc, amf-initial-registration seems like the main entry.
-        target_function = "amf-initial-registration.openfaas-fn"
+        target_function = "amf-initial-registration"
         
         # Collect buckets
         # Map: le (float) -> count (int)
@@ -124,7 +124,7 @@ def main():
     for scenario in scenarios:
         for target in targets:
             # Find runs
-            pattern = os.path.join(base_dir, target, scenario, "run*", "gateway_functions_seconds_bucket.json")
+            pattern = os.path.join(base_dir, target, scenario, "run*", "serverless5gc_function_duration_seconds_bucket.json")
             files = glob.glob(pattern)
             
             p50_sum = 0

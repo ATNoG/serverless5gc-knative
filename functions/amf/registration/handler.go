@@ -22,8 +22,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	handler "github.com/openfaas/templates-sdk/go-http"
 	"github.com/haidinhtuan/serverless5gc/pkg/crypto"
+	handler "github.com/haidinhtuan/serverless5gc/pkg/function"
 	"github.com/haidinhtuan/serverless5gc/pkg/models"
 	"github.com/haidinhtuan/serverless5gc/pkg/nas"
 	"github.com/haidinhtuan/serverless5gc/pkg/sbi"
@@ -86,7 +86,7 @@ type RegistrationResponse struct {
 	GUTI              string          `json:"guti"`
 	AllowedNSSAI      []models.SNSSAI `json:"allowed_nssai,omitempty"`
 	T3512Value        uint32          `json:"t3512_value"`
-	NASMessage        string          `json:"nas_message,omitempty"`  // hex-encoded NAS Registration Accept
+	NASMessage        string          `json:"nas_message,omitempty"` // hex-encoded NAS Registration Accept
 	SecurityActivated bool            `json:"security_activated"`
 }
 
@@ -222,8 +222,8 @@ func Handle(req handler.Request) (handler.Response, error) {
 
 	// Step 5: Create UE context using state machine (TS 23.502 Section 4.2.2)
 	sm := statemachine.NewUEStateMachine(regReq.SUPI)
-	sm.TransitionRM(statemachine.RMRegistered)   // RM-DEREGISTERED -> RM-REGISTERED
-	sm.TransitionCM(statemachine.CMConnected)     // CM-IDLE -> CM-CONNECTED
+	sm.TransitionRM(statemachine.RMRegistered) // RM-DEREGISTERED -> RM-REGISTERED
+	sm.TransitionCM(statemachine.CMConnected)  // CM-IDLE -> CM-CONNECTED
 
 	var allowedNSSAI []models.SNSSAI
 	if subData.AccessAndMobility != nil {

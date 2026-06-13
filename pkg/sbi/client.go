@@ -1,13 +1,8 @@
 // Package sbi provides the inter-NF communication client for the serverless 5GC.
-// In the Function-per-Procedure architecture, each function calls other functions
-// through the OpenFaaS gateway using HTTP POST with JSON payloads. This mirrors
-// the 3GPP Service-Based Interface (SBI) pattern where NFs communicate via
-// RESTful HTTP/2 APIs (TS 29.500), adapted for the OpenFaaS function routing model.
-//
-// The gateway URL defaults to http://gateway.openfaas:8080/function (the standard
-// OpenFaaS in-cluster endpoint). Go's default HTTP transport maintains a persistent
-// keep-alive connection pool, so each function call reuses an existing TCP connection
-// rather than performing a fresh handshake.
+// In the Function-per-Procedure architecture, each procedure runs as a Knative
+// Service and calls other procedures using HTTP POST with JSON payloads. This
+// mirrors the 3GPP Service-Based Interface (SBI) pattern where NFs communicate
+// via RESTful HTTP/2 APIs (TS 29.500).
 package sbi
 
 import (
@@ -19,34 +14,48 @@ import (
 	"os"
 )
 
-// Client calls other NF functions via the OpenFaaS gateway.
+// Client calls other NF procedure services.
 type Client struct {
-	gateway    string
-	httpClient *http.Client
+	urlTemplate string
+	httpClient  *http.Client
 }
 
-// NewClient creates an SBI client using the OPENFAAS_GATEWAY env var.
+// NewClient creates an SBI client using FUNCTION_URL_TEMPLATE, or the Knative
+// in-cluster service DNS pattern when unset.
 func NewClient() *Client {
-	gw := os.Getenv("OPENFAAS_GATEWAY")
-	if gw == "" {
-		gw = "http://gateway.openfaas:8080/function"
+	return &Client{urlTemplate: DefaultURLTemplate(), httpClient: &http.Client{}}
+}
+
+// DefaultURLTemplate returns the function URL template for the current process.
+// The template must include one %s placeholder for the function name.
+func DefaultURLTemplate() string {
+	if tmpl := os.Getenv("FUNCTION_URL_TEMPLATE"); tmpl != "" {
+		return tmpl
 	}
-	return &Client{gateway: gw, httpClient: &http.Client{}}
+	namespace := os.Getenv("FUNCTION_NAMESPACE")
+	if namespace == "" {
+		namespace = "default"
+	}
+	clusterDomain := os.Getenv("CLUSTER_DOMAIN")
+	if clusterDomain == "" {
+		clusterDomain = "cluster.local"
+	}
+	return fmt.Sprintf("http://%%s.%s.svc.%s", namespace, clusterDomain)
 }
 
-// NewClientWithGateway creates an SBI client with an explicit gateway URL.
-func NewClientWithGateway(gateway string) *Client {
-	return &Client{gateway: gateway, httpClient: &http.Client{}}
+// NewClientWithTemplate creates an SBI client with an explicit URL template.
+func NewClientWithTemplate(urlTemplate string) *Client {
+	return &Client{urlTemplate: urlTemplate, httpClient: &http.Client{}}
 }
 
-// CallFunction invokes another OpenFaaS function by name.
+// CallFunction invokes another procedure service by name.
 func (c *Client) CallFunction(funcName string, payload interface{}, result interface{}) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/%s", c.gateway, funcName)
+	url := fmt.Sprintf(c.urlTemplate, funcName)
 	resp, err := c.httpClient.Post(url, "application/json", bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("call %s: %w", funcName, err)

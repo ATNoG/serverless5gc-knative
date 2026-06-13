@@ -1,14 +1,14 @@
 #!/bin/bash
 # Runs a cold-start storm experiment: starts gNB, then simultaneously deletes all
 # function pods AND starts UEs. This ensures the first UE registrations hit the
-# gateway while function containers are still initializing.
+# Knative service endpoint while function containers are still initializing.
 #
 # Usage: ./run-coldstart.sh <scenario> [run_number]
 #   scenario: low | medium | high | burst
 #   run_number: 1 (default)
 #
 # Environment variables (required):
-#   SERVERLESS_IP  - IP of the serverless VM (K3s + OpenFaaS)
+#   SERVERLESS_IP  - IP of the serverless VM (K3s + Knative)
 #   LOADGEN_IP     - IP of the load generator VM (UERANSIM + Prometheus)
 
 set -euo pipefail
@@ -47,39 +47,24 @@ PDU_SESSIONS=$(grep 'pdu_sessions_per_ue:' "$SCENARIO_FILE" | head -1 | awk '{pr
 echo "UEs: ${UE_COUNT}, Rate: ${REG_RATE}/s, Duration: ${DURATION}min, PDU: ${PDU_SESSIONS}/UE"
 
 # ---------------------------------------------------------------------------
-# Step 1: Verify all function pods are running
+# Step 1: Verify all Knative services are ready
 # ---------------------------------------------------------------------------
 echo ""
-echo "Step 1: Verifying function deployments..."
-FUNC_COUNT=$(rkube "get deploy -n openfaas-fn --no-headers -o custom-columns=NAME:.metadata.name" 2>/dev/null | grep -v -E '^(redis|etcd)$' | wc -l)
-echo "  ${FUNC_COUNT} function deployments found"
-
-for i in $(seq 1 30); do
-    READY_COUNT=$(rkube "get pods -n openfaas-fn --no-headers" 2>/dev/null | grep -v -E '^(redis|etcd) ' | grep -c '1/1' || echo 0)
-    [ "$READY_COUNT" -ge "$FUNC_COUNT" ] && break
-    sleep 2
-done
-echo "  ${READY_COUNT}/${FUNC_COUNT} function pods ready"
+echo "Step 1: Verifying Knative services..."
+FUNC_COUNT=$(rkube "get ksvc -n default -l app.kubernetes.io/component=procedure-function --no-headers" 2>/dev/null | wc -l)
+echo "  ${FUNC_COUNT} procedure services found"
+rkube "wait ksvc -n default -l app.kubernetes.io/component=procedure-function --for=condition=Ready --timeout=180s"
+READY_COUNT=$(rkube "get ksvc -n default -l app.kubernetes.io/component=procedure-function --no-headers" 2>/dev/null | grep -c 'True' || echo 0)
+echo "  ${READY_COUNT}/${FUNC_COUNT} procedure services ready"
 
 # ---------------------------------------------------------------------------
 # Step 2: Restart SCTP proxy
 # ---------------------------------------------------------------------------
 echo ""
-echo "Step 2: Restarting SCTP proxy..."
-GW_IP=$(ssh_server "KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get svc -n openfaas gateway -o jsonpath='{.spec.clusterIP}'" 2>/dev/null)
-REDIS_IP=$(ssh_server "KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get svc -n openfaas-fn redis -o jsonpath='{.spec.clusterIP}'" 2>/dev/null)
-echo "  Gateway: ${GW_IP}, Redis: ${REDIS_IP}"
-
-ssh_server "systemctl stop sctp-proxy 2>/dev/null; systemctl reset-failed sctp-proxy 2>/dev/null; pkill -f sctp-proxy 2>/dev/null; sleep 2" 2>/dev/null || true
-ssh_server "systemd-run --unit=sctp-proxy --setenv=OPENFAAS_GATEWAY=http://${GW_IP}:8080/function/ --setenv=REDIS_ADDR=${REDIS_IP}:6379 --setenv=PLMN_MCC=001 --setenv=PLMN_MNC=01 /usr/local/bin/sctp-proxy"
-sleep 3
-
-PROXY_PID=$(ssh_server "pgrep -f /usr/local/bin/sctp-proxy" 2>/dev/null || echo "")
-if [ -z "$PROXY_PID" ]; then
-    echo "  ERROR: SCTP proxy failed to start"
-    exit 1
-fi
-echo "  SCTP proxy running (PID: ${PROXY_PID})"
+echo "Step 2: Restarting SCTP proxy deployment..."
+rkube "rollout restart deployment/sctp-proxy -n default"
+rkube "rollout status deployment/sctp-proxy -n default --timeout=120s"
+echo "  SCTP proxy deployment ready"
 
 # ---------------------------------------------------------------------------
 # Step 3: Generate UERANSIM configs and start gNB
@@ -178,15 +163,15 @@ START_TIME=$(date -Iseconds)
 echo "$START_TIME" > "${RESULTS_DIR}/start_time"
 
 # ---------------------------------------------------------------------------
-# Step 4: COLD-START TRIGGER — delete all function pods AND start UEs simultaneously
+# Step 4: COLD-START TRIGGER — delete all Knative function pods AND start UEs simultaneously
 # ---------------------------------------------------------------------------
 echo ""
-echo "Step 4: COLD-START STORM — deleting pods and starting UEs simultaneously..."
+echo "Step 4: COLD-START STORM — deleting Knative pods and starting UEs simultaneously..."
 DELETE_TS=$(date -Iseconds)
 echo "$DELETE_TS" > "${RESULTS_DIR}/coldstart_trigger_time"
 
-# Delete all function pods in background (cold-start trigger)
-rkube "delete pods -n openfaas-fn -l faas_function --grace-period=0 --force" 2>/dev/null &
+# Delete all Knative function pods in background (cold-start trigger)
+rkube "delete pods -n default -l app.kubernetes.io/component=procedure-function --grace-period=0 --force" 2>/dev/null &
 DELETE_PID=$!
 
 # Immediately start UE batches (don't wait for pod deletion)
@@ -255,16 +240,16 @@ echo "$END_TIME" > "${RESULTS_DIR}/end_time"
 # ---------------------------------------------------------------------------
 echo ""
 echo "Step 6: Collecting Prometheus metrics..."
-# Gateway metrics from OpenFaaS Prometheus (on serverless VM port 30175)
-OPENFAAS_PROM="http://${SERVERLESS_IP}:30175"
+# Function metrics from Prometheus. Override KNATIVE_PROM if needed.
+KNATIVE_PROM="${KNATIVE_PROM:-http://${SERVERLESS_IP}:30175}"
 # Node metrics from loadgen Prometheus
 NODE_PROM="http://${LOADGEN_IP}:9090"
 
-GW_METRICS=(
-    "gateway_function_invocation_total"
-    "gateway_functions_seconds_sum"
-    "gateway_functions_seconds_count"
-    "gateway_functions_seconds_bucket"
+FUNCTION_METRICS=(
+    "serverless5gc_function_invocations_total"
+    "serverless5gc_function_duration_seconds_sum"
+    "serverless5gc_function_duration_seconds_count"
+    "serverless5gc_function_duration_seconds_bucket"
 )
 
 NODE_METRICS=(
@@ -272,9 +257,9 @@ NODE_METRICS=(
     "node_memory_MemAvailable_bytes"
 )
 
-for METRIC in "${GW_METRICS[@]}"; do
-    echo "  Querying ${METRIC} (OpenFaaS)..."
-    curl -s -G "${OPENFAAS_PROM}/api/v1/query_range" \
+for METRIC in "${FUNCTION_METRICS[@]}"; do
+    echo "  Querying ${METRIC} (Knative functions)..."
+    curl -s -G "${KNATIVE_PROM}/api/v1/query_range" \
         --data-urlencode "query=${METRIC}" \
         --data-urlencode "start=${START_TIME}" \
         --data-urlencode "end=${END_TIME}" \
@@ -293,7 +278,7 @@ for METRIC in "${NODE_METRICS[@]}"; do
 done
 
 # Record final pod status
-rkube "get pods -n openfaas-fn --no-headers" 2>/dev/null \
+rkube "get pods -n default -l app.kubernetes.io/part-of=serverless5gc --no-headers" 2>/dev/null \
     > "${RESULTS_DIR}/final-pod-status.txt" 2>/dev/null || true
 
 # Save metadata

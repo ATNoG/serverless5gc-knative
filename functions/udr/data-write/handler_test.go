@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	handler "github.com/openfaas/templates-sdk/go-http"
+	handler "github.com/haidinhtuan/serverless5gc/pkg/function"
 	"github.com/haidinhtuan/serverless5gc/pkg/models"
 	"github.com/haidinhtuan/serverless5gc/pkg/state"
 )
@@ -24,7 +24,7 @@ func TestHandle_WriteSubscriber(t *testing.T) {
 	sub := models.SubscriberData{
 		SUPI: "imsi-001010000000001",
 		AuthenticationData: &models.AuthData{
-			AuthMethod:   "5G_AKA",
+			AuthMethod: "5G_AKA",
 			PermanentKey: []byte{0x46, 0x5B, 0x5C, 0xE8, 0xB1, 0x99, 0xB4, 0x9F,
 				0xAA, 0x5F, 0x0A, 0x2E, 0xE2, 0x38, 0xA6, 0xBC},
 			OPc: []byte{0xCD, 0x63, 0xCB, 0x71, 0x95, 0x4A, 0x9F, 0x4E,

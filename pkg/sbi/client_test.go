@@ -34,7 +34,7 @@ func TestCallFunction_Success(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClientWithGateway(srv.URL)
+	client := NewClientWithTemplate(srv.URL + "/%s")
 	var result map[string]string
 	if err := client.CallFunction("test-func", map[string]string{"key": "val"}, &result); err != nil {
 		t.Fatalf("CallFunction: %v", err)
@@ -53,7 +53,7 @@ func TestCallFunction_NilResult(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClientWithGateway(srv.URL)
+	client := NewClientWithTemplate(srv.URL + "/%s")
 	if err := client.CallFunction("fire-and-forget", map[string]string{}, nil); err != nil {
 		t.Fatalf("CallFunction with nil result: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestCallFunction_ServerError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := NewClientWithGateway(srv.URL)
+	client := NewClientWithTemplate(srv.URL + "/%s")
 	var result map[string]string
 	err := client.CallFunction("failing-func", map[string]string{}, &result)
 	if err == nil {
@@ -78,26 +78,27 @@ func TestCallFunction_ServerError(t *testing.T) {
 }
 
 func TestCallFunction_ConnectionRefused(t *testing.T) {
-	client := NewClientWithGateway("http://127.0.0.1:1") // nothing listening
+	client := NewClientWithTemplate("http://127.0.0.1:1/%s") // nothing listening
 	err := client.CallFunction("unreachable", map[string]string{}, nil)
 	if err == nil {
 		t.Fatal("expected error for unreachable server")
 	}
 }
 
-func TestNewClient_DefaultGateway(t *testing.T) {
-	// Ensure env is not set for this test
-	t.Setenv("OPENFAAS_GATEWAY", "")
+func TestNewClient_DefaultTemplate(t *testing.T) {
+	t.Setenv("FUNCTION_URL_TEMPLATE", "")
+	t.Setenv("FUNCTION_NAMESPACE", "")
+	t.Setenv("CLUSTER_DOMAIN", "")
 	client := NewClient()
-	if client.gateway != "http://gateway.openfaas:8080/function" {
-		t.Errorf("default gateway = %s, want http://gateway.openfaas:8080/function", client.gateway)
+	if client.urlTemplate != "http://%s.default.svc.cluster.local" {
+		t.Errorf("default template = %s, want http://%%s.default.svc.cluster.local", client.urlTemplate)
 	}
 }
 
-func TestNewClient_EnvGateway(t *testing.T) {
-	t.Setenv("OPENFAAS_GATEWAY", "http://custom:9090/fn")
+func TestNewClient_EnvTemplate(t *testing.T) {
+	t.Setenv("FUNCTION_URL_TEMPLATE", "http://%s.functions.svc.cluster.local")
 	client := NewClient()
-	if client.gateway != "http://custom:9090/fn" {
-		t.Errorf("gateway = %s, want http://custom:9090/fn", client.gateway)
+	if client.urlTemplate != "http://%s.functions.svc.cluster.local" {
+		t.Errorf("template = %s, want http://%%s.functions.svc.cluster.local", client.urlTemplate)
 	}
 }

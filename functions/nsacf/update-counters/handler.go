@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	handler "github.com/openfaas/templates-sdk/go-http"
+	handler "github.com/haidinhtuan/serverless5gc/pkg/function"
 	"github.com/haidinhtuan/serverless5gc/pkg/models"
 	"github.com/haidinhtuan/serverless5gc/pkg/state"
 )
@@ -34,7 +34,7 @@ func init() {
 type UpdateCountersRequest struct {
 	SNSSAI      models.SNSSAI `json:"snssai"`
 	CounterType string        `json:"counter_type"` // "UE" or "PDU_SESSION"
-	Operation   string        `json:"operation"`     // "INCREMENT" or "DECREMENT"
+	Operation   string        `json:"operation"`    // "INCREMENT" or "DECREMENT"
 }
 
 func Handle(req handler.Request) (handler.Response, error) {

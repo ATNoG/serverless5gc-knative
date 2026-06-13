@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 
-	handler "github.com/openfaas/templates-sdk/go-http"
+	handler "github.com/haidinhtuan/serverless5gc/pkg/function"
 	"github.com/haidinhtuan/serverless5gc/pkg/models"
 	"github.com/haidinhtuan/serverless5gc/pkg/state"
 )
@@ -24,6 +25,21 @@ var store NRFStore
 // SetStore allows tests to inject a mock store.
 func SetStore(s NRFStore) {
 	store = s
+}
+
+func init() {
+	if store != nil {
+		return
+	}
+	endpoint := os.Getenv("ETCD_ENDPOINT")
+	if endpoint == "" {
+		endpoint = "localhost:2379"
+	}
+	etcdStore, err := state.NewEtcdStore([]string{endpoint})
+	if err != nil {
+		panic(fmt.Sprintf("connect etcd at %s: %v", endpoint, err))
+	}
+	store = etcdStore
 }
 
 // DiscoverResult is the response payload for NF discovery.

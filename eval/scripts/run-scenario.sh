@@ -1,7 +1,7 @@
 #!/bin/bash
 # Runs a load generation scenario against a target system and collects metrics.
 #
-# For serverless target:      Uses HTTP load testing against OpenFaaS functions.
+# For serverless target:      Uses HTTP load testing against Knative Services.
 # For serverless-sctp target: Uses UERANSIM (Docker) via SCTP proxy.
 # For open5gs/free5gc:        Uses UERANSIM (Docker) with SCTP/NGAP.
 #
@@ -33,8 +33,10 @@ TARGET_AMF_IP="${TARGET_AMF_IP:?Set TARGET_AMF_IP}"
 
 UERANSIM_IMAGE="${UERANSIM_IMAGE:-openverso/ueransim:3.2.6}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_rsa}"
-# OpenFaaS gateway NodePort on the serverless VM.
-OPENFAAS_PORT="${OPENFAAS_PORT:-31113}"
+# Knative ingress endpoint on the serverless VM.
+KNATIVE_HTTP_PORT="${KNATIVE_HTTP_PORT:-80}"
+KNATIVE_DOMAIN="${KNATIVE_DOMAIN:-example.com}"
+FUNCTION_NAMESPACE="${FUNCTION_NAMESPACE:-default}"
 
 if [ ! -f "$SCENARIO_FILE" ]; then
     echo "ERROR: Scenario file not found: ${SCENARIO_FILE}"
@@ -92,11 +94,12 @@ if [ "$UE_COUNT" -eq 0 ]; then
     sleep $((DURATION * 60))
 
 elif [ "$TARGET" = "serverless" ]; then
-    # HTTP load testing against OpenFaaS functions.
-    GATEWAY_URL="http://${TARGET_AMF_IP}:${OPENFAAS_PORT}/function"
+    # HTTP load testing against Knative Services through the ingress endpoint.
+    KNATIVE_URL="${KNATIVE_URL:-http://${TARGET_AMF_IP}:${KNATIVE_HTTP_PORT}}"
 
     echo "Mode: HTTP load testing against serverless functions"
-    echo "Gateway: ${GATEWAY_URL}"
+    echo "Knative URL: ${KNATIVE_URL}"
+    echo "Knative domain: ${KNATIVE_DOMAIN}"
 
     # Install hey on loadgen if not present.
     ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "root@${LOADGEN_IP}" '
@@ -120,14 +123,16 @@ elif [ "$TARGET" = "serverless" ]; then
     # Run load generation on the loadgen VM via SSH.
     ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "root@${LOADGEN_IP}" "bash -s" << LOADEOF > "${RESULTS_DIR}/loadgen.log" 2>&1 &
 LOADGEN_PID=\$\$
-GATEWAY="${GATEWAY_URL}"
+KNATIVE_URL="${KNATIVE_URL}"
+KNATIVE_DOMAIN="${KNATIVE_DOMAIN}"
+FUNCTION_NAMESPACE="${FUNCTION_NAMESPACE}"
 UE_COUNT=${UE_COUNT}
 REG_RATE=${REG_RATE}
 PDU_SESSIONS=${PDU_SESSIONS}
 DURATION=${DURATION_SECS}
 
 echo "[\$(date +%H:%M:%S)] Starting HTTP load generation..."
-echo "  Gateway: \${GATEWAY}"
+echo "  Knative URL: \${KNATIVE_URL}"
 echo "  UEs: \${UE_COUNT}, Rate: \${REG_RATE}/s, PDU: \${PDU_SESSIONS}/UE"
 
 STARTED=0
@@ -143,14 +148,16 @@ while [ \$STARTED -lt \$UE_COUNT ]; do
         SUPI=\$(printf "imsi-001010%09d" \$IMSI_NUM)
 
         # Registration request
-        curl -s -X POST "\${GATEWAY}/amf-initial-registration" \
+        curl -s -X POST "\${KNATIVE_URL}" \
+            -H "Host: amf-initial-registration.\${FUNCTION_NAMESPACE}.\${KNATIVE_DOMAIN}" \
             -H "Content-Type: application/json" \
             -d "{\"supi\":\"\${SUPI}\",\"ran_ue_ngap_id\":\${IMSI_NUM},\"registration_type\":1}" \
             -o /dev/null -w "%{http_code} %{time_total}s\n" >> /tmp/s5gc-eval/reg-results.txt &
 
         # PDU session requests
         for p in \$(seq 1 \$PDU_SESSIONS); do
-            curl -s -X POST "\${GATEWAY}/smf-pdu-session-create" \
+            curl -s -X POST "\${KNATIVE_URL}" \
+                -H "Host: smf-pdu-session-create.\${FUNCTION_NAMESPACE}.\${KNATIVE_DOMAIN}" \
                 -H "Content-Type: application/json" \
                 -d "{\"supi\":\"\${SUPI}\",\"pdu_session_id\":\${p},\"dnn\":\"internet\",\"snssai\":{\"sst\":1,\"sd\":\"010203\"}}" \
                 -o /dev/null -w "%{http_code} %{time_total}s\n" >> /tmp/s5gc-eval/pdu-results.txt &
@@ -365,10 +372,10 @@ echo "Collecting metrics from Prometheus..."
 PROM_URL="http://${MONITORING_IP}:9090"
 
 METRICS=(
-    "gateway_function_invocation_total"
-    "gateway_functions_seconds_sum"
-    "gateway_functions_seconds_count"
-    "gateway_functions_seconds_bucket"
+    "serverless5gc_function_invocations_total"
+    "serverless5gc_function_duration_seconds_sum"
+    "serverless5gc_function_duration_seconds_count"
+    "serverless5gc_function_duration_seconds_bucket"
     "container_cpu_usage_seconds_total"
     "container_memory_usage_bytes"
     "serverless5gc_function_cost_usd"

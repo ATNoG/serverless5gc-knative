@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	handler "github.com/openfaas/templates-sdk/go-http"
+	handler "github.com/haidinhtuan/serverless5gc/pkg/function"
 	"github.com/haidinhtuan/serverless5gc/pkg/pfcp"
 	"github.com/haidinhtuan/serverless5gc/pkg/state"
 )
@@ -25,7 +25,7 @@ var Store state.KVStore
 // PFCP is the PFCP client. Override in tests via SetPFCP.
 var PFCP PFCPEstablisher
 
-func SetStore(s state.KVStore) { Store = s }
+func SetStore(s state.KVStore)  { Store = s }
 func SetPFCP(p PFCPEstablisher) { PFCP = p }
 
 func init() {

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Provisions subscribers in Redis via the udr-data-write OpenFaaS function.
+# Provisions subscribers in Redis via the udr-data-write Knative Service.
 #
 # Usage: ./provision-subscribers.sh <serverless_ip> [count]
 #
@@ -14,7 +14,11 @@ set -euo pipefail
 
 SERVERLESS_IP="${1:?Usage: $0 <serverless_ip> [count]}"
 TOTAL="${2:-1000}"
-GATEWAY="http://${SERVERLESS_IP}:31112/function/udr-data-write"
+FUNCTION_NAMESPACE="${FUNCTION_NAMESPACE:-default}"
+KNATIVE_DOMAIN="${KNATIVE_DOMAIN:-example.com}"
+KNATIVE_HTTP_PORT="${KNATIVE_HTTP_PORT:-80}"
+FUNCTION_URL="${FUNCTION_URL:-http://${SERVERLESS_IP}:${KNATIVE_HTTP_PORT}}"
+FUNCTION_HOST="${FUNCTION_HOST:-udr-data-write.${FUNCTION_NAMESPACE}.${KNATIVE_DOMAIN}}"
 BATCH=200
 
 # Auth parameters as base64 (byte arrays in Go JSON)
@@ -23,14 +27,15 @@ OPC_B64=$(echo -n "E8ED289DEBA952E4283B54E88E6183CA" | xxd -r -p | base64 -w0)
 AMF_B64=$(echo -n "8000" | xxd -r -p | base64 -w0)
 SQN_B64=$(echo -n "000000000020" | xxd -r -p | base64 -w0)
 
-echo "Provisioning ${TOTAL} subscribers via ${GATEWAY}..."
+echo "Provisioning ${TOTAL} subscribers via ${FUNCTION_URL} (Host: ${FUNCTION_HOST})..."
 
 SUCCESS=0
 FAIL=0
 
 for i in $(seq 1 $TOTAL); do
     SUPI=$(printf "imsi-001010%09d" "$i")
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$GATEWAY" \
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$FUNCTION_URL" \
+        -H "Host: ${FUNCTION_HOST}" \
         -H "Content-Type: application/json" \
         -d "{
             \"supi\": \"${SUPI}\",

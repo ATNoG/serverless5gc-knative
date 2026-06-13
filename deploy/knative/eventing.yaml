@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: serverless5gc-kafka-broker-config
+  namespace: default
+  labels:
+    app.kubernetes.io/part-of: serverless5gc
+data:
+  bootstrap.servers: "serverless5gc-kafka-bootstrap.kafka:9092"
+  default.topic.partitions: "10"
+  default.topic.replication.factor: "1"
+---
+apiVersion: eventing.knative.dev/v1
+kind: Broker
+metadata:
+  name: default
+  namespace: default
+  labels:
+    app.kubernetes.io/part-of: serverless5gc
+  annotations:
+    eventing.knative.dev/broker.class: Kafka
+spec:
+  config:
+    apiVersion: v1
+    kind: ConfigMap
+    name: serverless5gc-kafka-broker-config
+    namespace: default
+---
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  name: serverless5gc-eventlogger
+  namespace: default
+  labels:
+    app.kubernetes.io/part-of: serverless5gc
+spec:
+  broker: default
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: eventlogger
+---
+apiVersion: sources.knative.dev/v1
+kind: SinkBinding
+metadata:
+  name: serverless5gc-functions-to-broker
+  namespace: default
+  labels:
+    app.kubernetes.io/part-of: serverless5gc
+spec:
+  subject:
+    apiVersion: serving.knative.dev/v1
+    kind: Service
+    selector:
+      matchLabels:
+        serverless5gc.knative.dev/events: "enabled"
+  sink:
+    ref:
+      apiVersion: eventing.knative.dev/v1
+      kind: Broker
+      name: default
+---
+apiVersion: sources.knative.dev/v1
+kind: SinkBinding
+metadata:
+  name: serverless5gc-sctp-proxy-to-broker
+  namespace: default
+  labels:
+    app.kubernetes.io/part-of: serverless5gc
+spec:
+  subject:
+    apiVersion: apps/v1
+    kind: Deployment
+    selector:
+      matchLabels:
+        app: sctp-proxy
+  sink:
+    ref:
+      apiVersion: eventing.knative.dev/v1
+      kind: Broker
+      name: default

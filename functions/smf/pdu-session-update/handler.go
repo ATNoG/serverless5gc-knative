@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	handler "github.com/openfaas/templates-sdk/go-http"
+	handler "github.com/haidinhtuan/serverless5gc/pkg/function"
 	"github.com/haidinhtuan/serverless5gc/pkg/models"
 	"github.com/haidinhtuan/serverless5gc/pkg/pfcp"
 	"github.com/haidinhtuan/serverless5gc/pkg/state"
@@ -28,7 +28,7 @@ var Store state.KVStore
 var PFCP PFCPModifier
 
 func SetStore(s state.KVStore) { Store = s }
-func SetPFCP(p PFCPModifier) { PFCP = p }
+func SetPFCP(p PFCPModifier)   { PFCP = p }
 
 func init() {
 	if Store != nil {

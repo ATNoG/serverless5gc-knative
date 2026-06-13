@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
-	handler "github.com/openfaas/templates-sdk/go-http"
+	handler "github.com/haidinhtuan/serverless5gc/pkg/function"
 	"github.com/haidinhtuan/serverless5gc/pkg/models"
 	"github.com/haidinhtuan/serverless5gc/pkg/state"
 )
@@ -17,6 +18,21 @@ var store state.KVStore
 // SetStore allows tests to inject a mock store.
 func SetStore(s state.KVStore) {
 	store = s
+}
+
+func init() {
+	if store != nil {
+		return
+	}
+	endpoint := os.Getenv("ETCD_ENDPOINT")
+	if endpoint == "" {
+		endpoint = "localhost:2379"
+	}
+	etcdStore, err := state.NewEtcdStore([]string{endpoint})
+	if err != nil {
+		panic(fmt.Sprintf("connect etcd at %s: %v", endpoint, err))
+	}
+	store = etcdStore
 }
 
 // StatusNotification represents an NF status change event per TS 29.510.

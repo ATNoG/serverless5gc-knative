@@ -1,4 +1,4 @@
-.PHONY: test test-unit test-integration build lint clean
+.PHONY: test test-unit test-integration build lint clean build-functions build-images build-proxy
 
 MODULE := github.com/haidinhtuan/serverless5gc
 
@@ -14,9 +14,9 @@ build-proxy:
 	go build -o bin/sctp-proxy ./cmd/sctp-proxy/
 
 build-functions:
-	@for dir in functions/*/; do \
-		echo "Building $$dir..."; \
-	done
+	deploy/knative/build-images.sh
+
+build-images: build-functions
 
 lint:
 	golangci-lint run ./...

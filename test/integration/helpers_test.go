@@ -54,7 +54,7 @@ func waitForGateway(url string, timeout time.Duration) error {
 	return fmt.Errorf("gateway at %s not ready after %s", url, timeout)
 }
 
-// callFunction sends a POST request to the test gateway, mimicking an OpenFaaS invocation.
+// callFunction sends a POST request to the local test gateway.
 func callFunction(t *testing.T, funcName string, payload interface{}) (*http.Response, []byte) {
 	t.Helper()
 	body, err := json.Marshal(payload)
@@ -62,7 +62,7 @@ func callFunction(t *testing.T, funcName string, payload interface{}) (*http.Res
 		t.Fatalf("marshal payload: %v", err)
 	}
 
-	url := fmt.Sprintf("%s/function/%s", gatewayURL, funcName)
+	url := fmt.Sprintf("%s/%s", gatewayURL, funcName)
 	resp, err := http.Post(url, "application/json", bytes.NewReader(body))
 	if err != nil {
 		t.Fatalf("POST %s: %v", url, err)
@@ -104,8 +104,8 @@ func provisionTestSubscriber(t *testing.T) {
 		},
 		"session_management": []map[string]interface{}{
 			{
-				"snssai": map[string]interface{}{"sst": 1, "sd": "010203"},
-				"dnn":    testDNN,
+				"snssai":  map[string]interface{}{"sst": 1, "sd": "010203"},
+				"dnn":     testDNN,
 				"qos_ref": 9,
 			},
 		},

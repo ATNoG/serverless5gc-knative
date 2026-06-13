@@ -5,6 +5,8 @@ metadata:
   namespace: default
   labels:
     app: sctp-proxy
+    app.kubernetes.io/part-of: serverless5gc
+    serverless5gc.knative.dev/events: "enabled"
 spec:
   replicas: 1
   selector:
@@ -14,19 +16,28 @@ spec:
     metadata:
       labels:
         app: sctp-proxy
+        app.kubernetes.io/part-of: serverless5gc
+        serverless5gc.knative.dev/events: "enabled"
     spec:
       containers:
         - name: sctp-proxy
-          image: serverless5gc/sctp-proxy:latest
+          image: ghcr.io/atnog/serverless5gc-knative/sctp-proxy:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 38412
               protocol: SCTP
               name: ngap
           env:
-            - name: OPENFAAS_GATEWAY
-              value: "http://gateway.openfaas:8080/function/"
             - name: SCTP_LISTEN_ADDR
               value: "0.0.0.0:38412"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
           resources:
             requests:
               cpu: 100m

@@ -6,7 +6,7 @@ def dump_buckets(filepath):
         with open(filepath, 'r') as f:
             data = json.load(f)
         
-        target_function = "amf-initial-registration.openfaas-fn"
+        target_function = "amf-initial-registration"
         
         results = data['data']['result']
         buckets = {}
@@ -27,9 +27,9 @@ def dump_buckets(filepath):
     except Exception as e:
         return str(e)
 
-file1 = "/home/tdinh/WorkingSpace/02_Development/serverless5gc/eval/results/serverless-sctp/medium/run1/gateway_functions_seconds_bucket.json"
-file2 = "/home/tdinh/WorkingSpace/02_Development/serverless5gc/eval/results/free5gc/medium/run1/gateway_functions_seconds_bucket.json"
-file3 = "/home/tdinh/WorkingSpace/02_Development/serverless5gc/eval/results/open5gs/medium/run1/gateway_functions_seconds_bucket.json"
+file1 = "/home/tdinh/WorkingSpace/02_Development/serverless5gc/eval/results/serverless-sctp/medium/run1/serverless5gc_function_duration_seconds_bucket.json"
+file2 = "/home/tdinh/WorkingSpace/02_Development/serverless5gc/eval/results/free5gc/medium/run1/serverless5gc_function_duration_seconds_bucket.json"
+file3 = "/home/tdinh/WorkingSpace/02_Development/serverless5gc/eval/results/open5gs/medium/run1/serverless5gc_function_duration_seconds_bucket.json"
 
 b1 = dump_buckets(file1)
 b2 = dump_buckets(file2)

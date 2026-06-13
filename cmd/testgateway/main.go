@@ -7,35 +7,35 @@ import (
 	"net/http"
 	"os"
 
-	handler "github.com/openfaas/templates-sdk/go-http"
+	handler "github.com/haidinhtuan/serverless5gc/pkg/function"
 	"github.com/haidinhtuan/serverless5gc/pkg/sbi"
 	"github.com/haidinhtuan/serverless5gc/pkg/state"
 
 	// NRF functions (etcd-backed)
-	nrfRegister     "github.com/haidinhtuan/serverless5gc/functions/nrf/register"
-	nrfDiscover     "github.com/haidinhtuan/serverless5gc/functions/nrf/discover"
+	nrfDiscover "github.com/haidinhtuan/serverless5gc/functions/nrf/discover"
+	nrfRegister "github.com/haidinhtuan/serverless5gc/functions/nrf/register"
 	nrfStatusNotify "github.com/haidinhtuan/serverless5gc/functions/nrf/status-notify"
 
 	// AMF functions (redis-backed)
-	amfRegistration   "github.com/haidinhtuan/serverless5gc/functions/amf/registration"
+	amfAuthInitiate "github.com/haidinhtuan/serverless5gc/functions/amf/auth-initiate"
 	amfDeregistration "github.com/haidinhtuan/serverless5gc/functions/amf/deregistration"
-	amfServiceRequest "github.com/haidinhtuan/serverless5gc/functions/amf/service-request"
+	amfHandover "github.com/haidinhtuan/serverless5gc/functions/amf/handover"
 	amfPduSessionRelay "github.com/haidinhtuan/serverless5gc/functions/amf/pdu-session-relay"
-	amfHandover        "github.com/haidinhtuan/serverless5gc/functions/amf/handover"
-	amfAuthInitiate   "github.com/haidinhtuan/serverless5gc/functions/amf/auth-initiate"
+	amfRegistration "github.com/haidinhtuan/serverless5gc/functions/amf/registration"
+	amfServiceRequest "github.com/haidinhtuan/serverless5gc/functions/amf/service-request"
 
 	// SMF functions (redis-backed)
-	smfPduSessionCreate  "github.com/haidinhtuan/serverless5gc/functions/smf/pdu-session-create"
-	smfPduSessionUpdate  "github.com/haidinhtuan/serverless5gc/functions/smf/pdu-session-update"
+	smfN4SessionSetup "github.com/haidinhtuan/serverless5gc/functions/smf/n4-session-setup"
+	smfPduSessionCreate "github.com/haidinhtuan/serverless5gc/functions/smf/pdu-session-create"
 	smfPduSessionRelease "github.com/haidinhtuan/serverless5gc/functions/smf/pdu-session-release"
-	smfN4SessionSetup    "github.com/haidinhtuan/serverless5gc/functions/smf/n4-session-setup"
+	smfPduSessionUpdate "github.com/haidinhtuan/serverless5gc/functions/smf/pdu-session-update"
 
 	// UDM functions (redis-backed)
-	udmGenerateAuthData  "github.com/haidinhtuan/serverless5gc/functions/udm/generate-auth-data"
+	udmGenerateAuthData "github.com/haidinhtuan/serverless5gc/functions/udm/generate-auth-data"
 	udmGetSubscriberData "github.com/haidinhtuan/serverless5gc/functions/udm/get-subscriber-data"
 
 	// UDR functions (redis-backed)
-	udrDataRead  "github.com/haidinhtuan/serverless5gc/functions/udr/data-read"
+	udrDataRead "github.com/haidinhtuan/serverless5gc/functions/udr/data-read"
 	udrDataWrite "github.com/haidinhtuan/serverless5gc/functions/udr/data-write"
 
 	// AUSF functions (redis-backed)
@@ -43,31 +43,31 @@ import (
 
 	// PCF functions (redis-backed)
 	pcfPolicyCreate "github.com/haidinhtuan/serverless5gc/functions/pcf/policy-create"
-	pcfPolicyGet    "github.com/haidinhtuan/serverless5gc/functions/pcf/policy-get"
+	pcfPolicyGet "github.com/haidinhtuan/serverless5gc/functions/pcf/policy-get"
 
 	// NSSF functions (redis-backed)
 	nssfSliceSelect "github.com/haidinhtuan/serverless5gc/functions/nssf/slice-select"
 
 	// NWDAF functions (redis-backed, R17)
 	nwdafAnalyticsSubscribe "github.com/haidinhtuan/serverless5gc/functions/nwdaf/analytics-subscribe"
-	nwdafDataCollect        "github.com/haidinhtuan/serverless5gc/functions/nwdaf/data-collect"
+	nwdafDataCollect "github.com/haidinhtuan/serverless5gc/functions/nwdaf/data-collect"
 
 	// CHF functions (redis-backed, R17)
-	chfChargingCreate  "github.com/haidinhtuan/serverless5gc/functions/chf/charging-create"
-	chfChargingUpdate  "github.com/haidinhtuan/serverless5gc/functions/chf/charging-update"
+	chfChargingCreate "github.com/haidinhtuan/serverless5gc/functions/chf/charging-create"
 	chfChargingRelease "github.com/haidinhtuan/serverless5gc/functions/chf/charging-release"
+	chfChargingUpdate "github.com/haidinhtuan/serverless5gc/functions/chf/charging-update"
 
 	// NSACF functions (redis-backed, R17)
 	nsacfSliceAvailabilityCheck "github.com/haidinhtuan/serverless5gc/functions/nsacf/slice-availability-check"
-	nsacfUpdateCounters         "github.com/haidinhtuan/serverless5gc/functions/nsacf/update-counters"
+	nsacfUpdateCounters "github.com/haidinhtuan/serverless5gc/functions/nsacf/update-counters"
 
 	// BSF functions (redis-backed, R17)
-	bsfBindingRegister   "github.com/haidinhtuan/serverless5gc/functions/bsf/binding-register"
-	bsfBindingDiscover   "github.com/haidinhtuan/serverless5gc/functions/bsf/binding-discover"
 	bsfBindingDeregister "github.com/haidinhtuan/serverless5gc/functions/bsf/binding-deregister"
+	bsfBindingDiscover "github.com/haidinhtuan/serverless5gc/functions/bsf/binding-discover"
+	bsfBindingRegister "github.com/haidinhtuan/serverless5gc/functions/bsf/binding-register"
 )
 
-// wrapHandler converts an OpenFaaS function handler into a standard http.HandlerFunc.
+// wrapHandler converts a procedure handler into a standard http.HandlerFunc.
 // It reads the incoming HTTP request, constructs a handler.Request, calls the
 // function handler, and writes the handler.Response back to the HTTP response.
 func wrapHandler(fn func(handler.Request) (handler.Response, error)) http.HandlerFunc {
@@ -126,8 +126,8 @@ func main() {
 		log.Fatalf("Failed to connect to etcd at %s: %v", etcdEndpoint, err)
 	}
 
-	// SBI client pointing to this gateway for inter-function calls
-	sbiClient := sbi.NewClientWithGateway("http://localhost:8080/function")
+	// SBI client pointing to this gateway for inter-function calls.
+	sbiClient := sbi.NewClientWithTemplate("http://localhost:8080/%s")
 
 	// --- Configure NRF functions (etcd-backed) ---
 	nrfRegister.SetStore(etcdStore)
@@ -199,7 +199,7 @@ func main() {
 	bsfBindingDiscover.SetStore(redisStore)
 	bsfBindingDeregister.SetStore(redisStore)
 
-	// --- Register HTTP routes matching OpenFaaS function names from stack.yml ---
+	// --- Register HTTP routes matching Knative service names ---
 	mux := http.NewServeMux()
 
 	// Health check for integration test readiness probe
@@ -209,59 +209,59 @@ func main() {
 	})
 
 	// NRF
-	mux.HandleFunc("/function/nrf-register", wrapHandler(nrfRegister.Handle))
-	mux.HandleFunc("/function/nrf-discover", wrapHandler(nrfDiscover.Handle))
-	mux.HandleFunc("/function/nrf-status-notify", wrapHandler(nrfStatusNotify.Handle))
+	mux.HandleFunc("/nrf-register", wrapHandler(nrfRegister.Handle))
+	mux.HandleFunc("/nrf-discover", wrapHandler(nrfDiscover.Handle))
+	mux.HandleFunc("/nrf-status-notify", wrapHandler(nrfStatusNotify.Handle))
 
 	// AMF
-	mux.HandleFunc("/function/amf-initial-registration", wrapHandler(amfRegistration.Handle))
-	mux.HandleFunc("/function/amf-deregistration", wrapHandler(amfDeregistration.Handle))
-	mux.HandleFunc("/function/amf-service-request", wrapHandler(amfServiceRequest.Handle))
-	mux.HandleFunc("/function/amf-pdu-session-relay", wrapHandler(amfPduSessionRelay.Handle))
-	mux.HandleFunc("/function/amf-handover", wrapHandler(amfHandover.Handle))
-	mux.HandleFunc("/function/amf-auth-initiate", wrapHandler(amfAuthInitiate.Handle))
+	mux.HandleFunc("/amf-initial-registration", wrapHandler(amfRegistration.Handle))
+	mux.HandleFunc("/amf-deregistration", wrapHandler(amfDeregistration.Handle))
+	mux.HandleFunc("/amf-service-request", wrapHandler(amfServiceRequest.Handle))
+	mux.HandleFunc("/amf-pdu-session-relay", wrapHandler(amfPduSessionRelay.Handle))
+	mux.HandleFunc("/amf-handover", wrapHandler(amfHandover.Handle))
+	mux.HandleFunc("/amf-auth-initiate", wrapHandler(amfAuthInitiate.Handle))
 
 	// SMF
-	mux.HandleFunc("/function/smf-pdu-session-create", wrapHandler(smfPduSessionCreate.Handle))
-	mux.HandleFunc("/function/smf-pdu-session-update", wrapHandler(smfPduSessionUpdate.Handle))
-	mux.HandleFunc("/function/smf-pdu-session-release", wrapHandler(smfPduSessionRelease.Handle))
-	mux.HandleFunc("/function/smf-n4-session-setup", wrapHandler(smfN4SessionSetup.Handle))
+	mux.HandleFunc("/smf-pdu-session-create", wrapHandler(smfPduSessionCreate.Handle))
+	mux.HandleFunc("/smf-pdu-session-update", wrapHandler(smfPduSessionUpdate.Handle))
+	mux.HandleFunc("/smf-pdu-session-release", wrapHandler(smfPduSessionRelease.Handle))
+	mux.HandleFunc("/smf-n4-session-setup", wrapHandler(smfN4SessionSetup.Handle))
 
 	// UDM
-	mux.HandleFunc("/function/udm-generate-auth-data", wrapHandler(udmGenerateAuthData.Handle))
-	mux.HandleFunc("/function/udm-get-subscriber-data", wrapHandler(udmGetSubscriberData.Handle))
+	mux.HandleFunc("/udm-generate-auth-data", wrapHandler(udmGenerateAuthData.Handle))
+	mux.HandleFunc("/udm-get-subscriber-data", wrapHandler(udmGetSubscriberData.Handle))
 
 	// UDR
-	mux.HandleFunc("/function/udr-data-read", wrapHandler(udrDataRead.Handle))
-	mux.HandleFunc("/function/udr-data-write", wrapHandler(udrDataWrite.Handle))
+	mux.HandleFunc("/udr-data-read", wrapHandler(udrDataRead.Handle))
+	mux.HandleFunc("/udr-data-write", wrapHandler(udrDataWrite.Handle))
 
 	// AUSF
-	mux.HandleFunc("/function/ausf-authenticate", wrapHandler(ausfAuthenticate.Handle))
+	mux.HandleFunc("/ausf-authenticate", wrapHandler(ausfAuthenticate.Handle))
 
 	// PCF
-	mux.HandleFunc("/function/pcf-policy-create", wrapHandler(pcfPolicyCreate.Handle))
-	mux.HandleFunc("/function/pcf-policy-get", wrapHandler(pcfPolicyGet.Handle))
+	mux.HandleFunc("/pcf-policy-create", wrapHandler(pcfPolicyCreate.Handle))
+	mux.HandleFunc("/pcf-policy-get", wrapHandler(pcfPolicyGet.Handle))
 
 	// NSSF
-	mux.HandleFunc("/function/nssf-slice-select", wrapHandler(nssfSliceSelect.Handle))
+	mux.HandleFunc("/nssf-slice-select", wrapHandler(nssfSliceSelect.Handle))
 
 	// NWDAF (R17)
-	mux.HandleFunc("/function/nwdaf-analytics-subscribe", wrapHandler(nwdafAnalyticsSubscribe.Handle))
-	mux.HandleFunc("/function/nwdaf-data-collect", wrapHandler(nwdafDataCollect.Handle))
+	mux.HandleFunc("/nwdaf-analytics-subscribe", wrapHandler(nwdafAnalyticsSubscribe.Handle))
+	mux.HandleFunc("/nwdaf-data-collect", wrapHandler(nwdafDataCollect.Handle))
 
 	// CHF (R17)
-	mux.HandleFunc("/function/chf-charging-create", wrapHandler(chfChargingCreate.Handle))
-	mux.HandleFunc("/function/chf-charging-update", wrapHandler(chfChargingUpdate.Handle))
-	mux.HandleFunc("/function/chf-charging-release", wrapHandler(chfChargingRelease.Handle))
+	mux.HandleFunc("/chf-charging-create", wrapHandler(chfChargingCreate.Handle))
+	mux.HandleFunc("/chf-charging-update", wrapHandler(chfChargingUpdate.Handle))
+	mux.HandleFunc("/chf-charging-release", wrapHandler(chfChargingRelease.Handle))
 
 	// NSACF (R17)
-	mux.HandleFunc("/function/nsacf-slice-availability-check", wrapHandler(nsacfSliceAvailabilityCheck.Handle))
-	mux.HandleFunc("/function/nsacf-update-counters", wrapHandler(nsacfUpdateCounters.Handle))
+	mux.HandleFunc("/nsacf-slice-availability-check", wrapHandler(nsacfSliceAvailabilityCheck.Handle))
+	mux.HandleFunc("/nsacf-update-counters", wrapHandler(nsacfUpdateCounters.Handle))
 
 	// BSF (R17)
-	mux.HandleFunc("/function/bsf-binding-register", wrapHandler(bsfBindingRegister.Handle))
-	mux.HandleFunc("/function/bsf-binding-discover", wrapHandler(bsfBindingDiscover.Handle))
-	mux.HandleFunc("/function/bsf-binding-deregister", wrapHandler(bsfBindingDeregister.Handle))
+	mux.HandleFunc("/bsf-binding-register", wrapHandler(bsfBindingRegister.Handle))
+	mux.HandleFunc("/bsf-binding-discover", wrapHandler(bsfBindingDiscover.Handle))
+	mux.HandleFunc("/bsf-binding-deregister", wrapHandler(bsfBindingDeregister.Handle))
 
 	addr := ":8080"
 	log.Printf("Test gateway listening on %s", addr)

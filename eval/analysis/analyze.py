@@ -135,16 +135,16 @@ def analyze_run(run_dir):
 
     # Load invocation metrics.
     invoc_results = load_prometheus_json(
-        run_dir / "gateway_function_invocation_total.json"
+        run_dir / "serverless5gc_function_invocations_total.json"
     )
     total_invocations = extract_last_value(invoc_results)
 
     # Load duration metrics.
     duration_sum = load_prometheus_json(
-        run_dir / "gateway_functions_seconds_sum.json"
+        run_dir / "serverless5gc_function_duration_seconds_sum.json"
     )
     duration_count = load_prometheus_json(
-        run_dir / "gateway_functions_seconds_count.json"
+        run_dir / "serverless5gc_function_duration_seconds_count.json"
     )
     total_duration = extract_last_value(duration_sum)
     total_count = extract_last_value(duration_count)

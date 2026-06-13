@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	handler "github.com/openfaas/templates-sdk/go-http"
+	handler "github.com/haidinhtuan/serverless5gc/pkg/function"
 	"github.com/haidinhtuan/serverless5gc/pkg/models"
 	"github.com/haidinhtuan/serverless5gc/pkg/state"
 )
@@ -33,7 +33,7 @@ func init() {
 
 // SubscriberDataResponse contains the access and mobility subscription data.
 type SubscriberDataResponse struct {
-	SUPI              string              `json:"supi"`
+	SUPI              string                `json:"supi"`
 	AccessAndMobility *models.AccessMobData `json:"access_mobility_data,omitempty"`
 	SessionManagement []models.SMPolicyData `json:"session_management,omitempty"`
 }

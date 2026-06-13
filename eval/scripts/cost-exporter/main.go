@@ -56,7 +56,7 @@ var (
 	functionInvocations = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "serverless5gc_function_invocations_total",
-			Help: "Total invocations per function (mirrored from OpenFaaS)",
+			Help: "Total invocations per procedure function.",
 		},
 		[]string{"function_name"},
 	)
@@ -113,7 +113,7 @@ func parseFloat(v interface{}) float64 {
 func collectCosts(promURL string) {
 	// Query total invocations per function over the last hour.
 	invocResult, err := queryPrometheus(promURL,
-		"sum(increase(gateway_function_invocation_total[1h])) by (function_name)")
+		"sum(increase(serverless5gc_function_invocations_total[1h])) by (function_name)")
 	if err != nil {
 		log.Printf("Error querying invocations: %v", err)
 		return
@@ -121,7 +121,7 @@ func collectCosts(promURL string) {
 
 	// Query average duration per function over the last hour.
 	durationResult, err := queryPrometheus(promURL,
-		"rate(gateway_functions_seconds_sum[1h]) / rate(gateway_functions_seconds_count[1h])")
+		"rate(serverless5gc_function_duration_seconds_sum[1h]) / rate(serverless5gc_function_duration_seconds_count[1h])")
 	if err != nil {
 		log.Printf("Error querying durations: %v", err)
 		return
@@ -137,7 +137,7 @@ func collectCosts(promURL string) {
 	}
 
 	var totalServerlessCost float64
-	defaultMemoryMB := 128.0 // default OpenFaaS function memory
+	defaultMemoryMB := 128.0 // default function memory request
 
 	if invocResult.Status == "success" {
 		for _, r := range invocResult.Data.Result {

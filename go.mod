@@ -9,7 +9,6 @@ require (
 	github.com/free5gc/ngap v1.1.2
 	github.com/free5gc/util v1.3.1
 	github.com/ishidawataru/sctp v0.0.0-20251114114122-19ddcbc6aae2
-	github.com/openfaas/templates-sdk/go-http v0.0.0-20220408082716-5981c545cb03
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.17.3
 	github.com/wmnsk/go-pfcp v0.0.24
