@@ -227,6 +227,32 @@ eval/scripts/provision-subscribers.sh 127.0.0.1 1000
 
 ## Run Evaluation
 
+For Knative-only evaluation inside the Kubernetes cluster, install the bundled
+Prometheus first:
+
+```bash
+scripts/install-monitoring.sh
+```
+
+This creates a `monitoring` namespace with Prometheus exposed at:
+
+- in-cluster: `http://prometheus.monitoring.svc.cluster.local:9090`
+- NodePort: `http://<node-ip>:30175`
+
+It scrapes procedure function `/metrics` endpoints and kubelet cAdvisor metrics.
+
+Run a cluster-local HTTP evaluation without an external load generator VM:
+
+```bash
+eval/scripts/run-knative-cluster-eval.sh low 1
+```
+
+Results are written to:
+
+```text
+eval/results/serverless-cluster/<scenario>/run<run>/
+```
+
 HTTP mode through Knative ingress:
 
 ```bash
