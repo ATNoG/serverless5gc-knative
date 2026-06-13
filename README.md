@@ -75,7 +75,7 @@ External images still used by native Kubernetes manifests:
 
 - `redis:7-alpine`
 - `quay.io/coreos/etcd:v3.5.12`
-- `free5gc/upf:v3.4.1`
+- `free5gc/upf:v4.2.0`
 
 ## Prerequisites
 
@@ -84,6 +84,16 @@ External images still used by native Kubernetes manifests:
 - Docker or a compatible image builder.
 - A Kafka cluster reachable from the Knative Kafka Broker.
 - Knative Serving, Knative Eventing, and Knative Kafka Broker installed.
+- `gtp5g` kernel module loaded on every node that may run the UPF.
+- `/dev/net/tun` available on the UPF node. The UPF manifest mounts it and runs the UPF container privileged because the free5GC UPF creates GTP interfaces.
+
+Prepare every node that may run the UPF:
+
+```bash
+sudo scripts/install-upf-node-prereqs.sh
+```
+
+For Arch-family nodes, including EndeavourOS, the script installs `base-devel`, `git`, `kmod`, and the matching kernel headers package. For Debian/Ubuntu nodes, it installs `build-essential`, `git`, `kmod`, and `linux-headers-$(uname -r)`.
 
 The helper install script installs Knative Serving, Kourier, Eventing, and the Kafka Broker implementation. It does not install a Kafka cluster.
 
@@ -149,6 +159,33 @@ kubectl get deploy,pod,svc
 ```
 
 The SCTP/N2 endpoint is exposed as NodePort `31412` by the `sctp-proxy` Service, forwarding to NGAP/SCTP port `38412` in the pod. Point UERANSIM gNB `amfConfigs[].address` to a cluster node IP and `port` to `31412`.
+
+If the UPF enters `CrashLoopBackOff` with empty logs, inspect pod events first:
+
+```bash
+kubectl describe pod -l app=upf
+kubectl get pod -l app=upf -o wide
+```
+
+On the selected node, verify:
+
+```bash
+lsmod | grep gtp5g
+test -c /dev/net/tun
+```
+
+If `/dev/net/tun` is missing, load the kernel module:
+
+```bash
+sudo modprobe tun
+```
+
+If `gtp5g` is missing, run the node prep script on that node and restart the UPF deployment:
+
+```bash
+sudo scripts/install-upf-node-prereqs.sh
+kubectl rollout restart deployment/upf -n default
+```
 
 ## Smoke Test
 

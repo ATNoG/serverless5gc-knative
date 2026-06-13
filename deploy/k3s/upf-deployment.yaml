@@ -11,6 +11,8 @@ data:
     pfcp:
       addr: 0.0.0.0
       nodeID: upf
+      retransTimeout: 1s
+      maxRetrans: 3
 
     gtpu:
       forwarder: gtp5g
@@ -23,6 +25,7 @@ data:
         cidr: 10.60.0.0/16
 
     logger:
+      enable: true
       level: info
 ---
 apiVersion: apps/v1
@@ -42,10 +45,16 @@ spec:
       labels:
         app: upf
     spec:
+      securityContext:
+        sysctls:
+          - name: net.ipv4.ip_forward
+            value: "1"
       containers:
         - name: upf
-          image: free5gc/upf:v3.4.1
+          image: free5gc/upf:v4.2.0
+          command: ["./upf", "-c", "./config/upfcfg.yaml"]
           securityContext:
+            privileged: true
             capabilities:
               add:
                 - NET_ADMIN
@@ -60,6 +69,8 @@ spec:
             - name: upf-config
               mountPath: /free5gc/config/upfcfg.yaml
               subPath: upfcfg.yaml
+            - name: dev-net-tun
+              mountPath: /dev/net/tun
           resources:
             requests:
               cpu: 250m
@@ -71,6 +82,10 @@ spec:
         - name: upf-config
           configMap:
             name: upf-config
+        - name: dev-net-tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
 ---
 apiVersion: v1
 kind: Service
