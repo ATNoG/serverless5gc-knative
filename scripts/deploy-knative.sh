@@ -65,5 +65,5 @@ echo "Waiting for Kafka Broker"
 kubectl wait broker/default -n "$NAMESPACE" --for=condition=Ready --timeout=300s
 
 echo "Serverless5GC Knative deployment complete."
-echo "SCTP/N2 endpoint: NodePort 38412 on each cluster node"
+echo "SCTP/N2 endpoint: NodePort 31412 on each cluster node, forwarded to NGAP/SCTP 38412 in the sctp-proxy pod"
 echo "Example in-cluster function URL: http://amf-initial-registration.${NAMESPACE}.svc.${CLUSTER_DOMAIN}"

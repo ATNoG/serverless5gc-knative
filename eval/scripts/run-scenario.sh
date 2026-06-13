@@ -37,6 +37,7 @@ SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_rsa}"
 KNATIVE_HTTP_PORT="${KNATIVE_HTTP_PORT:-80}"
 KNATIVE_DOMAIN="${KNATIVE_DOMAIN:-example.com}"
 FUNCTION_NAMESPACE="${FUNCTION_NAMESPACE:-default}"
+SCTP_PROXY_NODEPORT="${SCTP_PROXY_NODEPORT:-31412}"
 
 if [ ! -f "$SCENARIO_FILE" ]; then
     echo "ERROR: Scenario file not found: ${SCENARIO_FILE}"
@@ -203,8 +204,12 @@ LOADEOF
         "rm -f /tmp/s5gc-eval/reg-results.txt /tmp/s5gc-eval/pdu-results.txt" 2>/dev/null || true
 
 else
-    # UERANSIM mode for open5gs / free5gc targets.
+    # UERANSIM mode for serverless-sctp / open5gs / free5gc targets.
     echo "Mode: UERANSIM (SCTP/NGAP) against ${TARGET}"
+    NGAP_PORT=38412
+    if [ "$TARGET" = "serverless-sctp" ]; then
+        NGAP_PORT="${SCTP_PROXY_NODEPORT}"
+    fi
 
     # Generate UERANSIM configs.
     GNB_CONFIG="${RESULTS_DIR}/gnb.yaml"
@@ -219,7 +224,7 @@ ngapIp: ${LOADGEN_IP}
 gtpIp: ${LOADGEN_IP}
 amfConfigs:
   - address: ${TARGET_AMF_IP}
-    port: 38412
+    port: ${NGAP_PORT}
 slices:
   - sst: 1
     sd: 0x010203

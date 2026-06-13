@@ -27,6 +27,7 @@ RESULTS_DIR="${PROJECT_DIR}/eval/results/serverless-sctp-coldstart/${SCENARIO}/r
 mkdir -p "$RESULTS_DIR"
 
 UERANSIM_IMAGE="${UERANSIM_IMAGE:-openverso/ueransim:3.2.6}"
+SCTP_PROXY_NODEPORT="${SCTP_PROXY_NODEPORT:-31412}"
 
 # Helper functions for SSH
 ssh_server() { ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "root@${SERVERLESS_IP}" "$@"; }
@@ -84,7 +85,7 @@ ngapIp: ${LOADGEN_IP}
 gtpIp: ${LOADGEN_IP}
 amfConfigs:
   - address: ${SERVERLESS_IP}
-    port: 38412
+    port: ${SCTP_PROXY_NODEPORT}
 slices:
   - sst: 1
     sd: 0x010203

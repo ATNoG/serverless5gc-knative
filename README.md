@@ -43,7 +43,7 @@ Kubernetes-native resources:
 - Redis for UE/session/subscriber state.
 - etcd for NRF registry state.
 - UPF for PFCP/GTP-U.
-- SCTP proxy for NGAP/SCTP on NodePort `38412`.
+- SCTP proxy for NGAP/SCTP on NodePort `31412`, forwarding to pod port `38412`.
 
 ## Runtime Changes
 
@@ -148,7 +148,7 @@ kubectl get broker,trigger,sinkbinding
 kubectl get deploy,pod,svc
 ```
 
-The SCTP/N2 endpoint is exposed as NodePort `38412` by the `sctp-proxy` Service. Point UERANSIM gNB `amfConfigs[].address` to a cluster node IP and `port` to `38412`.
+The SCTP/N2 endpoint is exposed as NodePort `31412` by the `sctp-proxy` Service, forwarding to NGAP/SCTP port `38412` in the pod. Point UERANSIM gNB `amfConfigs[].address` to a cluster node IP and `port` to `31412`.
 
 ## Smoke Test
 
