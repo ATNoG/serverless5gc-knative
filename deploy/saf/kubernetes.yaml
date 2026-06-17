@@ -1,0 +1,1528 @@
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: nrf-register
+  namespace: default
+  labels:
+    app.kubernetes.io/name: nrf-register
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.nfType? | type != \"string\" or (IN(\"AMF\", \"SMF\", \"UPF\", \"AUSF\", \"UDM\", \"UDR\", \"NRF\", \"NSSF\", \"PCF\", \"CHF\", \"BSF\", \"NWDAF\", \"NSACF\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"nfInstanceId\" and . != \"nfType\" and . != \"nfStatus\" and . != \"ipv4Addresses\" and . != \"nfServices\" and . != \"plmnList\" and . != \"heartBeatTimer\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.nfInstanceId? | type != \"string\" or length < 3 or length > 128 or (test(\"^[A-Za-z0-9_.:-]+$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.nfServices? // []) | type != \"array\") or ((.REQUEST.BODY.nfServices? // []) | length > 32))"}]}}'
+      labels:
+        app.kubernetes.io/name: nrf-register
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/nrf-register:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "nrf-register"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: ETCD_ENDPOINT
+              value: "etcd:2379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: nrf-discover
+  namespace: default
+  labels:
+    app.kubernetes.io/name: nrf-discover
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\" and (.REQUEST.METHOD | ascii_upcase) != \"GET\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and (.REQUEST.BODY[\"target-nf-type\"]? | type == \"string\" and (IN(\"AMF\", \"SMF\", \"UPF\", \"AUSF\", \"UDM\", \"UDR\", \"NRF\", \"NSSF\", \"PCF\", \"CHF\", \"BSF\", \"NWDAF\", \"NSACF\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"target-nf-type\")) | length) > 0)"}]}}'
+      labels:
+        app.kubernetes.io/name: nrf-discover
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/nrf-discover:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "nrf-discover"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: ETCD_ENDPOINT
+              value: "etcd:2379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: nrf-status-notify
+  namespace: default
+  labels:
+    app.kubernetes.io/name: nrf-status-notify
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.nfInstanceId? | type != \"string\" or length < 3 or length > 128 or (test(\"^[A-Za-z0-9_.:-]+$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"nfInstanceId\" and . != \"nfStatus\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.nfStatus? | IN(\"REGISTERED\", \"SUSPENDED\", \"UNDISCOVERABLE\") | not)"}]}}'
+      labels:
+        app.kubernetes.io/name: nrf-status-notify
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/nrf-status-notify:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "nrf-status-notify"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: ETCD_ENDPOINT
+              value: "etcd:2379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: amf-initial-registration
+  namespace: default
+  labels:
+    app.kubernetes.io/name: amf-initial-registration
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\" and . != \"ran_ue_ngap_id\" and . != \"gnb_id\" and . != \"registration_type\" and . != \"requested_nssai\" and . != \"ue_security_cap\" and . != \"skip_auth\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY.ran_ue_ngap_id? // 0) < 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY.registration_type? // 1) < 1 or (.REQUEST.BODY.registration_type? // 1) > 4)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.requested_nssai? != null and ((.REQUEST.BODY.requested_nssai | type) != \"array\" or any(.REQUEST.BODY.requested_nssai[]?; ((.sst // 0) < 1 or (.sst // 0) > 255))))"}]}}'
+      labels:
+        app.kubernetes.io/name: amf-initial-registration
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/amf-initial-registration:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "amf-initial-registration"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: ETCD_ENDPOINT
+              value: "etcd:2379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: amf-deregistration
+  namespace: default
+  labels:
+    app.kubernetes.io/name: amf-deregistration
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\" and . != \"deregistration_type\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY.deregistration_type? // 1) < 0 or (.REQUEST.BODY.deregistration_type? // 1) > 15)"}]}}'
+      labels:
+        app.kubernetes.io/name: amf-deregistration
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/amf-deregistration:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "amf-deregistration"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: amf-service-request
+  namespace: default
+  labels:
+    app.kubernetes.io/name: amf-service-request
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\")) | length) > 0)"}]}}'
+      labels:
+        app.kubernetes.io/name: amf-service-request
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/amf-service-request:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "amf-service-request"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: amf-pdu-session-relay
+  namespace: default
+  labels:
+    app.kubernetes.io/name: amf-pdu-session-relay
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\" and . != \"snssai\" and . != \"dnn\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sst? // 0) < 1) or ((.REQUEST.BODY.snssai.sst? // 0) > 255))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sd? // \"\") | length > 0) and (((.REQUEST.BODY.snssai.sd? // \"\") | test(\"^[0-9A-Fa-f]{6}$\")) | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.dnn? // \"internet\") | type) != \"string\" or ((.REQUEST.BODY.dnn? // \"internet\") | length) < 1 or ((.REQUEST.BODY.dnn? // \"internet\") | length) > 63 or (((.REQUEST.BODY.dnn? // \"internet\") | test(\"^[A-Za-z0-9.-]+$\")) | not))"}]}}'
+      labels:
+        app.kubernetes.io/name: amf-pdu-session-relay
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/amf-pdu-session-relay:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "amf-pdu-session-relay"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: amf-auth-initiate
+  namespace: default
+  labels:
+    app.kubernetes.io/name: amf-auth-initiate
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\" and . != \"serving_network_name\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.serving_network_name? != null and (.REQUEST.BODY.serving_network_name | type != \"string\" or (test(\"^5G:mnc[0-9]{3}\\\\.mcc[0-9]{3}\\\\.3gppnetwork\\\\.org$\") | not)))"}]}}'
+      labels:
+        app.kubernetes.io/name: amf-auth-initiate
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/amf-auth-initiate:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "amf-auth-initiate"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: amf-handover
+  namespace: default
+  labels:
+    app.kubernetes.io/name: amf-handover
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\" and . != \"target_gnb_id\" and . != \"cause\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.target_gnb_id? | type != \"string\" or length < 3 or length > 64 or (test(\"^[A-Za-z0-9_.:-]+$\") | not))"}]}}'
+      labels:
+        app.kubernetes.io/name: amf-handover
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/amf-handover:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "amf-handover"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: smf-pdu-session-create
+  namespace: default
+  labels:
+    app.kubernetes.io/name: smf-pdu-session-create
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\" and . != \"snssai\" and . != \"dnn\" and . != \"pdu_session_type\" and . != \"ssc_mode\" and . != \"pdu_session_id\" and . != \"session_ambr_ul\" and . != \"session_ambr_dl\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sst? // 0) < 1) or ((.REQUEST.BODY.snssai.sst? // 0) > 255))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sd? // \"\") | length > 0) and (((.REQUEST.BODY.snssai.sd? // \"\") | test(\"^[0-9A-Fa-f]{6}$\")) | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.dnn? // \"internet\") | type) != \"string\" or ((.REQUEST.BODY.dnn? // \"internet\") | length) < 1 or ((.REQUEST.BODY.dnn? // \"internet\") | length) > 63 or (((.REQUEST.BODY.dnn? // \"internet\") | test(\"^[A-Za-z0-9.-]+$\")) | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY.pdu_session_id? // 1) < 1 or (.REQUEST.BODY.pdu_session_id? // 1) > 15)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.pdu_session_type? != null and (.REQUEST.BODY.pdu_session_type | IN(\"IPv4\", \"IPv6\", \"IPv4v6\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.session_ambr_ul? // 0) > 10000000000) or ((.REQUEST.BODY.session_ambr_dl? // 0) > 10000000000))"}]}}'
+      labels:
+        app.kubernetes.io/name: smf-pdu-session-create
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/smf-pdu-session-create:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "smf-pdu-session-create"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: UPF_PFCP_ADDR
+              value: "upf:8805"
+            - name: ENABLE_CHARGING
+              value: "true"
+            - name: ENABLE_NSACF
+              value: "true"
+            - name: ENABLE_BSF
+              value: "true"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: smf-pdu-session-update
+  namespace: default
+  labels:
+    app.kubernetes.io/name: smf-pdu-session-update
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.session_id? | type != \"string\" or (test(\"^pdu-imsi-[0-9]{15}-[0-9]+$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"session_id\" and . != \"ambr_ul\" and . != \"ambr_dl\" and . != \"qfi\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY.qfi? // 1) < 1 or (.REQUEST.BODY.qfi? // 1) > 63)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.ambr_ul? // 0) > 10000000000) or ((.REQUEST.BODY.ambr_dl? // 0) > 10000000000))"}]}}'
+      labels:
+        app.kubernetes.io/name: smf-pdu-session-update
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/smf-pdu-session-update:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "smf-pdu-session-update"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: UPF_PFCP_ADDR
+              value: "upf:8805"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: smf-pdu-session-release
+  namespace: default
+  labels:
+    app.kubernetes.io/name: smf-pdu-session-release
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.session_id? | type != \"string\" or (test(\"^pdu-imsi-[0-9]{15}-[0-9]+$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"session_id\")) | length) > 0)"}]}}'
+      labels:
+        app.kubernetes.io/name: smf-pdu-session-release
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/smf-pdu-session-release:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "smf-pdu-session-release"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: UPF_PFCP_ADDR
+              value: "upf:8805"
+            - name: ENABLE_CHARGING
+              value: "true"
+            - name: ENABLE_NSACF
+              value: "true"
+            - name: ENABLE_BSF
+              value: "true"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: smf-n4-session-setup
+  namespace: default
+  labels:
+    app.kubernetes.io/name: smf-n4-session-setup
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.ue_ip? | type != \"string\" or (test(\"^(10|172|192)\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"seid\" and . != \"ue_ip\" and . != \"teid\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY.seid? // 0) <= 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY.teid? // 0) < 0 or (.REQUEST.BODY.teid? // 0) > 4294967295)"}]}}'
+      labels:
+        app.kubernetes.io/name: smf-n4-session-setup
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/smf-n4-session-setup:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "smf-n4-session-setup"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: UPF_PFCP_ADDR
+              value: "upf:8805"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: udm-generate-auth-data
+  namespace: default
+  labels:
+    app.kubernetes.io/name: udm-generate-auth-data
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\" and . != \"serving_network_name\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.serving_network_name? != null and (.REQUEST.BODY.serving_network_name | type != \"string\" or (test(\"^5G:mnc[0-9]{3}\\\\.mcc[0-9]{3}\\\\.3gppnetwork\\\\.org$\") | not)))"}]}}'
+      labels:
+        app.kubernetes.io/name: udm-generate-auth-data
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/udm-generate-auth-data:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "udm-generate-auth-data"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: udm-get-subscriber-data
+  namespace: default
+  labels:
+    app.kubernetes.io/name: udm-get-subscriber-data
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\" and (.REQUEST.METHOD | ascii_upcase) != \"GET\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\")) | length) > 0)"}]}}'
+      labels:
+        app.kubernetes.io/name: udm-get-subscriber-data
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/udm-get-subscriber-data:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "udm-get-subscriber-data"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: udr-data-read
+  namespace: default
+  labels:
+    app.kubernetes.io/name: udr-data-read
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\" and (.REQUEST.METHOD | ascii_upcase) != \"GET\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\")) | length) > 0)"}]}}'
+      labels:
+        app.kubernetes.io/name: udr-data-read
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/udr-data-read:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "udr-data-read"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: udr-data-write
+  namespace: default
+  labels:
+    app.kubernetes.io/name: udr-data-write
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\" and . != \"auth_data\" and . != \"access_mobility_data\" and . != \"session_management\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.auth_data? | type != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.auth_data.auth_method? | IN(\"5G_AKA\", \"EAP_AKA\") | not)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.access_mobility_data? | type != \"object\")"}]}}'
+      labels:
+        app.kubernetes.io/name: udr-data-write
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/udr-data-write:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "udr-data-write"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ausf-authenticate
+  namespace: default
+  labels:
+    app.kubernetes.io/name: ausf-authenticate
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\" and . != \"res_star\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.res_star? | type != \"string\" or (test(\"^[0-9A-Fa-f]{16,128}$\") | not))"}]}}'
+      labels:
+        app.kubernetes.io/name: ausf-authenticate
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/ausf-authenticate:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "ausf-authenticate"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: pcf-policy-create
+  namespace: default
+  labels:
+    app.kubernetes.io/name: pcf-policy-create
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\" and . != \"snssai\" and . != \"dnn\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sst? // 0) < 1) or ((.REQUEST.BODY.snssai.sst? // 0) > 255))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sd? // \"\") | length > 0) and (((.REQUEST.BODY.snssai.sd? // \"\") | test(\"^[0-9A-Fa-f]{6}$\")) | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.dnn? // \"internet\") | type) != \"string\" or ((.REQUEST.BODY.dnn? // \"internet\") | length) < 1 or ((.REQUEST.BODY.dnn? // \"internet\") | length) > 63 or (((.REQUEST.BODY.dnn? // \"internet\") | test(\"^[A-Za-z0-9.-]+$\")) | not))"}]}}'
+      labels:
+        app.kubernetes.io/name: pcf-policy-create
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/pcf-policy-create:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "pcf-policy-create"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: pcf-policy-get
+  namespace: default
+  labels:
+    app.kubernetes.io/name: pcf-policy-get
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\" and (.REQUEST.METHOD | ascii_upcase) != \"GET\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and (.REQUEST.BODY.policy_id? | type != \"string\" or (test(\"^pol-imsi-[0-9]{15}-[0-9]+$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"policy_id\")) | length) > 0)"}]}}'
+      labels:
+        app.kubernetes.io/name: pcf-policy-get
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/pcf-policy-get:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "pcf-policy-get"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: nssf-slice-select
+  namespace: default
+  labels:
+    app.kubernetes.io/name: nssf-slice-select
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY.requested_nssai? // []) | type != \"array\" or length == 0 or length > 8)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"requested_nssai\" and . != \"plmn\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and any(.REQUEST.BODY.requested_nssai[]?; ((.sst // 0) < 1 or (.sst // 0) > 255 or (((.sd // \"\") | length > 0) and (((.sd // \"\") | test(\"^[0-9A-Fa-f]{6}$\")) | not))))"}]}}'
+      labels:
+        app.kubernetes.io/name: nssf-slice-select
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/nssf-slice-select:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "nssf-slice-select"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: nwdaf-analytics-subscribe
+  namespace: default
+  labels:
+    app.kubernetes.io/name: nwdaf-analytics-subscribe
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.event_id? | IN(\"NF_LOAD\", \"SLICE_LOAD\", \"UE_MOBILITY\") | not)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"event_id\" and . != \"target_nf\" and . != \"snssai\" and . != \"notification_uri\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.notification_uri? != null and (.REQUEST.BODY.notification_uri | type != \"string\" or (test(\"^https?://[A-Za-z0-9_.:-]+(/.*)?$\") | not)))"}]}}'
+      labels:
+        app.kubernetes.io/name: nwdaf-analytics-subscribe
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/nwdaf-analytics-subscribe:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "nwdaf-analytics-subscribe"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: nwdaf-data-collect
+  namespace: default
+  labels:
+    app.kubernetes.io/name: nwdaf-data-collect
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.collect_type? | IN(\"NF_LOAD\", \"SLICE_LOAD\") | not)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"collect_type\" and . != \"nf_instance_id\" and . != \"nf_type\" and . != \"cpu_usage\" and . != \"mem_usage\" and . != \"nf_load\" and . != \"snssai\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and .REQUEST.BODY.collect_type == \"NF_LOAD\" and (.REQUEST.BODY.nf_instance_id? | type != \"string\" or length < 3 or length > 128)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY.nf_load? // 0) < 0 or (.REQUEST.BODY.nf_load? // 0) > 100)"}]}}'
+      labels:
+        app.kubernetes.io/name: nwdaf-data-collect
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/nwdaf-data-collect:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "nwdaf-data-collect"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: chf-charging-create
+  namespace: default
+  labels:
+    app.kubernetes.io/name: chf-charging-create
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\" and . != \"pdu_session_id\" and . != \"dnn\" and . != \"snssai\" and . != \"charging_type\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sst? // 0) < 1) or ((.REQUEST.BODY.snssai.sst? // 0) > 255))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sd? // \"\") | length > 0) and (((.REQUEST.BODY.snssai.sd? // \"\") | test(\"^[0-9A-Fa-f]{6}$\")) | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.dnn? // \"internet\") | type) != \"string\" or ((.REQUEST.BODY.dnn? // \"internet\") | length) < 1 or ((.REQUEST.BODY.dnn? // \"internet\") | length) > 63 or (((.REQUEST.BODY.dnn? // \"internet\") | test(\"^[A-Za-z0-9.-]+$\")) | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.pdu_session_id? | type != \"string\" or length < 3 or length > 128)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.charging_type? != null and (.REQUEST.BODY.charging_type | IN(\"ONLINE\", \"OFFLINE\") | not))"}]}}'
+      labels:
+        app.kubernetes.io/name: chf-charging-create
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/chf-charging-create:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "chf-charging-create"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: ENABLE_CHARGING
+              value: "true"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: chf-charging-update
+  namespace: default
+  labels:
+    app.kubernetes.io/name: chf-charging-update
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.charging_id? | type != \"string\" or (test(\"^chg-imsi-[0-9]{15}-[0-9]+$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"charging_id\" and . != \"volume_uplink\" and . != \"volume_downlink\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.volume_uplink? // 0) > 1000000000000) or ((.REQUEST.BODY.volume_downlink? // 0) > 1000000000000))"}]}}'
+      labels:
+        app.kubernetes.io/name: chf-charging-update
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/chf-charging-update:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "chf-charging-update"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: ENABLE_CHARGING
+              value: "true"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: chf-charging-release
+  namespace: default
+  labels:
+    app.kubernetes.io/name: chf-charging-release
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.charging_id? | type != \"string\" or (test(\"^chg-imsi-[0-9]{15}-[0-9]+$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"charging_id\")) | length) > 0)"}]}}'
+      labels:
+        app.kubernetes.io/name: chf-charging-release
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/chf-charging-release:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "chf-charging-release"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: ENABLE_CHARGING
+              value: "true"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: nsacf-slice-availability-check
+  namespace: default
+  labels:
+    app.kubernetes.io/name: nsacf-slice-availability-check
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sst? // 0) < 1) or ((.REQUEST.BODY.snssai.sst? // 0) > 255))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"snssai\" and . != \"check_type\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sd? // \"\") | length > 0) and (((.REQUEST.BODY.snssai.sd? // \"\") | test(\"^[0-9A-Fa-f]{6}$\")) | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.check_type? | IN(\"UE\", \"PDU_SESSION\") | not)"}]}}'
+      labels:
+        app.kubernetes.io/name: nsacf-slice-availability-check
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/nsacf-slice-availability-check:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "nsacf-slice-availability-check"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: ENABLE_NSACF
+              value: "true"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: nsacf-update-counters
+  namespace: default
+  labels:
+    app.kubernetes.io/name: nsacf-update-counters
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sst? // 0) < 1) or ((.REQUEST.BODY.snssai.sst? // 0) > 255))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"snssai\" and . != \"counter_type\" and . != \"operation\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sd? // \"\") | length > 0) and (((.REQUEST.BODY.snssai.sd? // \"\") | test(\"^[0-9A-Fa-f]{6}$\")) | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.counter_type? | IN(\"UE\", \"PDU_SESSION\") | not)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.operation? | IN(\"INCREMENT\", \"DECREMENT\") | not)"}]}}'
+      labels:
+        app.kubernetes.io/name: nsacf-update-counters
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/nsacf-update-counters:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "nsacf-update-counters"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: ENABLE_NSACF
+              value: "true"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: bsf-binding-register
+  namespace: default
+  labels:
+    app.kubernetes.io/name: bsf-binding-register
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? | type != \"string\" or (test(\"^imsi-[0-9]{15}$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"supi\" and . != \"dnn\" and . != \"snssai\" and . != \"pcf_address\" and . != \"ue_address\" and . != \"pdu_session_id\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sst? // 0) < 1) or ((.REQUEST.BODY.snssai.sst? // 0) > 255))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.snssai.sd? // \"\") | length > 0) and (((.REQUEST.BODY.snssai.sd? // \"\") | test(\"^[0-9A-Fa-f]{6}$\")) | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (((.REQUEST.BODY.dnn? // \"internet\") | type) != \"string\" or ((.REQUEST.BODY.dnn? // \"internet\") | length) < 1 or ((.REQUEST.BODY.dnn? // \"internet\") | length) > 63 or (((.REQUEST.BODY.dnn? // \"internet\") | test(\"^[A-Za-z0-9.-]+$\")) | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.pdu_session_id? | type != \"string\" or length < 3 or length > 128)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.pcf_address? != null and (.REQUEST.BODY.pcf_address | type != \"string\" or length > 128 or (test(\"^[A-Za-z0-9_.:-]+$\") | not)))"}]}}'
+      labels:
+        app.kubernetes.io/name: bsf-binding-register
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/bsf-binding-register:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "bsf-binding-register"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: ENABLE_BSF
+              value: "true"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: bsf-binding-discover
+  namespace: default
+  labels:
+    app.kubernetes.io/name: bsf-binding-discover
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY.ue_address? // \"\") == \"\" and (.REQUEST.BODY.supi? // \"\") == \"\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"ue_address\" and . != \"supi\" and . != \"dnn\")) | length) > 0)"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.supi? != null and (.REQUEST.BODY.supi | test(\"^imsi-[0-9]{15}$\") | not))"}]}}'
+      labels:
+        app.kubernetes.io/name: bsf-binding-discover
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/bsf-binding-discover:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "bsf-binding-discover"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: ENABLE_BSF
+              value: "true"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: bsf-binding-deregister
+  namespace: default
+  labels:
+    app.kubernetes.io/name: bsf-binding-deregister
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: procedure-function
+    serverless5gc.knative.dev/events: "enabled"
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "50"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and (.REQUEST.BODY.binding_id? | type != \"string\" or (test(\"^bsf-imsi-[0-9]{15}-[0-9]+$\") | not))"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) == \"POST\") and ((.REQUEST.BODY | keys | map(select(. != \"binding_id\")) | length) > 0)"}]}}'
+      labels:
+        app.kubernetes.io/name: bsf-binding-deregister
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: procedure-function
+        serverless5gc.knative.dev/events: "enabled"
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 60
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/bsf-binding-deregister:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FUNCTION_NAME
+              value: "bsf-binding-deregister"
+            - name: FUNCTION_NAMESPACE
+              value: "default"
+            - name: CLUSTER_DOMAIN
+              value: "cluster.local"
+            - name: FUNCTION_URL_TEMPLATE
+              value: "http://%s.default.svc.cluster.local"
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: ENABLE_BSF
+              value: "true"
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: eventlogger
+  namespace: default
+  labels:
+    app.kubernetes.io/name: eventlogger
+    app.kubernetes.io/part-of: serverless5gc
+    app.kubernetes.io/component: event-sink
+    serverless5gc.knative.dev/saf-protected: "true"
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "0"
+        autoscaling.knative.dev/max-scale: "5"
+        autoscaling.knative.dev/metric: "concurrency"
+        autoscaling.knative.dev/target: "10"
+        qpoption.knative.dev/firewall-activate: "enable"
+        qpoption.knative.dev/firewall-config-rules-json: '{"request":{"default-action":"accept","rules":[{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.METHOD | ascii_upcase) != \"POST\")"},{"action":"drop","expression":".REQUEST.URI.path == \"/\" and ((.REQUEST.BODY | type) != \"object\")"}]}}'
+      labels:
+        app.kubernetes.io/name: eventlogger
+        app.kubernetes.io/part-of: serverless5gc
+        app.kubernetes.io/component: event-sink
+        serverless5gc.knative.dev/saf-protected: "true"
+    spec:
+      containerConcurrency: 100
+      containers:
+        - image: ghcr.io/atnog/serverless5gc-knative/eventlogger:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080

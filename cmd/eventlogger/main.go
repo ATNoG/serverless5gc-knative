@@ -34,6 +34,13 @@ func main() {
 }
 
 func handleEvent(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ignored, only Post request are supported at the moment"}`))
+		return
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "read body", http.StatusBadRequest)
@@ -54,5 +61,7 @@ func handleEvent(w http.ResponseWriter, r *http.Request) {
 
 	encoded, _ := json.Marshal(event)
 	log.Printf("cloudevent %s", encoded)
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
+	w.Write([]byte(`{"status":"accepted"}`))
 }

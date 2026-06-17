@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: serverless5gc
 data:
-  bootstrap.servers: "serverless5gc-kafka-bootstrap.kafka:9092"
+  bootstrap.servers: "my-cluster-kafka-bootstrap.kafka:9092"
   default.topic.partitions: "10"
   default.topic.replication.factor: "1"
 ---

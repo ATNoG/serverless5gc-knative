@@ -148,7 +148,7 @@ Defaults:
 - `TAG=latest`
 - `NAMESPACE=default`
 - `CLUSTER_DOMAIN=cluster.local`
-- `KAFKA_BOOTSTRAP_SERVERS=serverless5gc-kafka-bootstrap.kafka:9092`
+- `KAFKA_BOOTSTRAP_SERVERS=my-cluster-kafka-bootstrap.kafka:9092`
 
 Check readiness:
 
@@ -185,6 +185,70 @@ If `gtp5g` is missing, run the node prep script on that node and restart the UPF
 ```bash
 sudo scripts/install-upf-node-prereqs.sh
 kubectl rollout restart deployment/upf -n default
+```
+
+## Deploy With SAF Firewall Protection
+
+This repository also includes a SAF-protected Knative deployment model in
+`deploy/saf`. It deploys the same Serverless5GC procedure functions, but each
+Knative Service is annotated for the Serverless Application Firewall queue-proxy
+with rules tailored to that service's 5GC procedure payload.
+
+The SAF deployment protects all Knative Services:
+
+- 31 procedure services.
+- `eventlogger`.
+
+The Kubernetes-native workloads stay unchanged and are not SAF-protected:
+Redis, etcd, UPF, and the SCTP proxy.
+
+Prerequisite: Knative Serving must use a SAF-capable queue-proxy image. The
+helper script patches Knative Serving automatically by default:
+
+```bash
+deploy/saf/deploy-saf.sh
+```
+
+Default images:
+
+- SAF queue-proxy:
+  `ghcr.io/atnog/serverless-workflow-firewall/queue:latest`
+- Serverless5GC functions:
+  `ghcr.io/atnog/serverless5gc-knative/<image>:latest`
+
+Override them when needed:
+
+```bash
+QUEUE_PROXY_IMAGE=ghcr.io/atnog/serverless-workflow-firewall/queue:latest \
+REGISTRY=ghcr.io/atnog/serverless5gc-knative \
+TAG=latest \
+KAFKA_BOOTSTRAP_SERVERS=my-cluster-kafka-bootstrap.kafka:9092 \
+deploy/saf/deploy-saf.sh
+```
+
+If Knative Serving is already patched to use SAF:
+
+```bash
+PATCH_SAF_QUEUE_PROXY=false deploy/saf/deploy-saf.sh
+```
+
+The policies are defined in `deploy/saf/policies.json`, rendered by
+`deploy/saf/render-services.py`, and documented in `deploy/saf/README.md`.
+They include service-specific semantic checks and strict top-level JSON body
+allowlists, so unexpected request parameters are rejected before reaching the
+function.
+
+Generate the number of SAF request rules per Knative Service:
+
+```bash
+deploy/saf/policy-rule-counts.py --output deploy/saf/policy-rule-counts.csv
+```
+
+Verify the protected services:
+
+```bash
+kubectl get ksvc -l serverless5gc.knative.dev/saf-protected=true
+scripts/smoke-test-knative.sh
 ```
 
 ## Smoke Test
@@ -292,6 +356,135 @@ It writes:
 - `eval/results/function_metrics.csv`
 - PNG charts in `eval/results/charts/`
 
+### Compare SAF Flow Latency
+
+To measure the latency overhead introduced by SAF on a representative
+Serverless5GC execution flow, use:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r eval/analysis/requirements.txt
+
+BASELINE_QUEUE_PROXY_IMAGE=<standard-knative-queue-image> \
+MODES="baseline saf" \
+ITERATIONS=30 \
+WARMUP=5 \
+eval/scripts/compare-saf-flow-latency.sh
+```
+
+The script deploys the baseline Knative model, runs the flow, deploys the SAF
+model, runs the same flow again, and writes results under:
+
+```text
+eval/results/saf-flow-latency/<run-id>/
+```
+
+Generated files include:
+
+- `client-trace.csv`: diagnostic curl status and client elapsed time. This is
+  not used as the paper latency metric.
+- `<mode>/logs/<service>/*_queue_proxy_logs.txt`: queue-proxy logs collected
+  after the external flow run.
+- `queue-proxy-latency-raw.csv`: one row per measured queue-proxy latency entry
+  and one synthetic `flow_total` row per complete sample.
+- `queue-proxy-latency-summary.csv`: mean, standard error, median, p95, min,
+  and max queue-proxy latency per step.
+- `queue-proxy-latency-difference.csv`: paired `SAF - baseline` latency
+  difference per step.
+- `charts/step_latency_mean.pdf`: vector PDF point plot with per-step mean latency and standard error; `flow_total` is appended as the final category.
+- `charts/step_latency_difference.pdf`: vector PDF point plot with mean `SAF - baseline` latency difference and standard error per step.
+- `charts/flow_total_latency.pdf`: vector PDF with the summed queue-proxy
+  latency across the representative flow.
+
+The representative flow is a chained PDU session establishment path. The
+external test client invokes only `smf-pdu-session-create`. That function then
+uses the in-cluster SBI client to call `pcf-policy-create`,
+`nsacf-slice-availability-check`, `bsf-binding-register`,
+`chf-charging-create`, and `nsacf-update-counters`. This keeps the measured
+SAF path closer to a real function-to-function 5GC execution flow instead of
+directly invoking every service from the client.
+
+This comparison follows the SAF evaluation model: the script runs on an
+external machine, uses `kubectl` only to deploy/wait/read Knative Service URLs,
+and sends the entry request directly from that machine to a public Knative
+route. The downstream function calls are made by the running functions through
+their configured in-cluster `FUNCTION_URL_TEMPLATE`. It does not create an
+in-cluster Kubernetes Job. The machine running it must have:
+
+- kubeapi access through the active kubeconfig.
+- network access to the Knative ingress address.
+- Python plotting dependencies installed in the virtualenv.
+
+The primary latency metric is parsed from Knative queue-proxy log entries of
+the form `"latency": "...s"`, matching the original SAF latency tests. The
+external curl elapsed time is retained only to debug failed or slow client
+requests.
+
+If Knative `status.url` values are reachable from the external machine, no
+extra URL argument is needed. Otherwise pass the ingress IP used by the SAF
+tests:
+
+```bash
+KNATIVE_EXTERNAL_IP=<knative-ingress-ip> \
+MODES="current" \
+SKIP_DEPLOY=true \
+ITERATIONS=10 \
+WARMUP=2 \
+eval/scripts/compare-saf-flow-latency.sh
+```
+
+This builds URLs as:
+
+```text
+http://<service>.<namespace>.<knative-ingress-ip>.sslip.io
+```
+
+For a custom public domain, use a URL template:
+
+```bash
+KNATIVE_URL_TEMPLATE='https://{service}.{namespace}.example.com' \
+MODES="current" \
+SKIP_DEPLOY=true \
+eval/scripts/compare-saf-flow-latency.sh
+```
+
+The script also removes the `networking.knative.dev/visibility=cluster-local`
+label from the entry Knative Service and Route, if present, so
+`smf-pdu-session-create` is public. The downstream services remain reachable
+through normal in-cluster Knative service DNS.
+
+The queue-proxy logs collected for the chained flow are from
+`smf-pdu-session-create`, `pcf-policy-create`,
+`nsacf-slice-availability-check`, `bsf-binding-register`,
+`chf-charging-create`, and `nsacf-update-counters`.
+
+For an already deployed cluster, measure the current state without redeploying:
+
+```bash
+MODES="current" \
+SKIP_DEPLOY=true \
+ITERATIONS=10 \
+WARMUP=2 \
+eval/scripts/compare-saf-flow-latency.sh
+```
+
+To regenerate summaries and PDF graphs later from a previous run without
+rerunning the tests:
+
+```bash
+eval/scripts/plot-saf-flow-latency.py \
+  eval/results/saf-flow-latency/<existing-run-id>
+```
+
+Pass any previous run directory as the positional argument if it is not under
+the default `eval/results/saf-flow-latency/` directory.
+
+`BASELINE_QUEUE_PROXY_IMAGE` must point to the normal Knative queue-proxy image
+for your Knative installation. If it is omitted on a cluster already patched for
+SAF, the "baseline" run may still use the SAF queue-proxy image and should not
+be treated as a clean baseline.
+
 HTTP mode through Knative ingress:
 
 ```bash
@@ -353,7 +546,7 @@ serverless5gc/
 | `ETCD_ENDPOINT` | `etcd:2379` in manifests | NRF functions |
 | `UPF_PFCP_ADDR` | `upf:8805` in manifests | SMF functions |
 | `K_SINK` | injected by SinkBinding | CloudEvent producers |
-| `KAFKA_BOOTSTRAP_SERVERS` | `serverless5gc-kafka-bootstrap.kafka:9092` | deployment script |
+| `KAFKA_BOOTSTRAP_SERVERS` | `my-cluster-kafka-bootstrap.kafka:9092` | deployment script |
 
 ## References
 

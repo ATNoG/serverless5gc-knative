@@ -38,13 +38,6 @@ spec:
               value: "cluster.local"
             - name: FUNCTION_URL_TEMPLATE
               value: "http://%s.default.svc.cluster.local"
-          resources:
-            requests:
-              cpu: 100m
-              memory: 64Mi
-            limits:
-              cpu: 500m
-              memory: 256Mi
 ---
 apiVersion: v1
 kind: Service

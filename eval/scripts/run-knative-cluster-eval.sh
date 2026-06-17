@@ -124,7 +124,9 @@ spec:
               NOW=\$(date +%s)
               ELAPSED=\$((NOW - START_TS))
               REMAIN=\$((DURATION_SECS - ELAPSED))
-              [ "\$REMAIN" -gt 0 ] && sleep "\$REMAIN"
+              if [ "\$REMAIN" -gt 0 ]; then
+                sleep "\$REMAIN"
+              fi
 YAML
 
 kubectl apply -f "$TMP_JOB"

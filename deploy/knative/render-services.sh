@@ -100,15 +100,6 @@ YAML
     for pair in $extra_env; do
         emit_env "${pair%%=*}" "${pair#*=}"
     done
-    cat << YAML
-          resources:
-            requests:
-              cpu: 50m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 256Mi
-YAML
 }
 
 emit_eventlogger() {
@@ -136,13 +127,6 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
-          resources:
-            requests:
-              cpu: 25m
-              memory: 64Mi
-            limits:
-              cpu: 200m
-              memory: 128Mi
 YAML
 }
 

@@ -12,7 +12,7 @@ NAMESPACE="${NAMESPACE:-default}"
 REGISTRY="${REGISTRY:-ghcr.io/atnog/serverless5gc-knative}"
 TAG="${TAG:-latest}"
 CLUSTER_DOMAIN="${CLUSTER_DOMAIN:-cluster.local}"
-KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS:-serverless5gc-kafka-bootstrap.kafka:9092}"
+KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS:-my-cluster-kafka-bootstrap.kafka:9092}"
 
 if [ "$NAMESPACE" != "default" ]; then
     echo "This deployment currently expects NAMESPACE=default because deploy/k3s manifests are namespace-pinned." >&2
