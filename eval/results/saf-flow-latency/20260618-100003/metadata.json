@@ -1,0 +1,15 @@
+{
+  "run_id": "20260618-100003",
+  "namespace": "default",
+  "modes": "baseline SAF ",
+  "iterations": 551,
+  "warmup": 5,
+  "wait_period": 1,
+  "clean_install": "true",
+  "skip_deploy": "false",
+  "flow_profile": "relay",
+  "entry_service": "amf-pdu-session-relay",
+  "latency_source": "queue-proxy logs",
+  "client_trace": "diagnostic only",
+  "flow_services": ["amf-pdu-session-relay","smf-pdu-session-create","pcf-policy-create","nsacf-slice-availability-check","bsf-binding-register","chf-charging-create","nsacf-update-counters"]
+}
