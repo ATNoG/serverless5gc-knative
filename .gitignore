@@ -35,10 +35,6 @@ tmp/
 *.tmp
 __pycache__/
 
-# Log files
-logs/
-*.log
-
 # Paper sync (managed separately)
 overleaf_sync
 
