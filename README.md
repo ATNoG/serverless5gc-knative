@@ -367,14 +367,33 @@ python3 -m venv .venv
 python -m pip install -r eval/analysis/requirements.txt
 
 BASELINE_QUEUE_PROXY_IMAGE=<standard-knative-queue-image> \
-MODES="baseline saf" \
+MODES="baseline SAF" \
+FLOW_PROFILE=smf \
 ITERATIONS=30 \
 WARMUP=5 \
 eval/scripts/compare-saf-flow-latency.sh
 ```
 
-The script deploys the baseline Knative model, runs the flow, deploys the SAF
-model, runs the same flow again, and writes results under:
+Use `FLOW_PROFILE=relay` to measure the AMF-to-SMF relay chain instead:
+
+```bash
+BASELINE_QUEUE_PROXY_IMAGE=<standard-knative-queue-image> \
+MODES="baseline SAF" \
+FLOW_PROFILE=relay \
+ITERATIONS=30 \
+WARMUP=5 \
+eval/scripts/compare-saf-flow-latency.sh
+```
+
+By default, before each `baseline` or `saf` experiment, the script uninstalls
+the existing Serverless5GC core from the namespace and then installs that mode
+from scratch. The cleanup removes the Serverless5GC Knative Services, app
+Knative Eventing objects, Redis, etcd, UPF, SCTP proxy, and Redis/etcd PVCs, so
+database state from one experiment is not reused by the next one. It does not
+remove the Knative Serving/Eventing control plane or the Kafka installation.
+
+The script deploys the baseline Knative model, runs the flow, removes it,
+deploys the SAF model, runs the same flow again, and writes results under:
 
 ```text
 eval/results/saf-flow-latency/<run-id>/
@@ -386,16 +405,17 @@ Generated files include:
   not used as the paper latency metric.
 - `<mode>/logs/<service>/*_queue_proxy_logs.txt`: queue-proxy logs collected
   after the external flow run.
-- `queue-proxy-latency-raw.csv`: one row per measured queue-proxy latency entry
-  and one synthetic `flow_total` row per complete sample.
+- `queue-proxy-latency-raw.csv`: one row per measured queue-proxy latency entry.
 - `queue-proxy-latency-summary.csv`: mean, standard error, median, p95, min,
   and max queue-proxy latency per step.
 - `queue-proxy-latency-difference.csv`: paired `SAF - baseline` latency
   difference per step.
-- `charts/step_latency_mean.pdf`: vector PDF point plot with per-step mean latency and standard error; `flow_total` is appended as the final category.
-- `charts/step_latency_difference.pdf`: vector PDF point plot with mean `SAF - baseline` latency difference and standard error per step.
-- `charts/flow_total_latency.pdf`: vector PDF with the summed queue-proxy
-  latency across the representative flow.
+- `charts/step_latency_mean.pdf`: vector PDF point plot with per-function mean latency and standard error; `smf-pdu-session-create (total)` is the orchestrating flow latency.
+- `charts/step_latency_mean_annotated.pdf`: same graph with `mean +/- SE` labels on each point.
+- `charts/step_latency_difference.pdf`: vector PDF point plot with mean `SAF - baseline` latency difference and standard error per function; the `smf-pdu-session-create (total)` point is highlighted with a separate color.
+- `charts/step_latency_difference_annotated.pdf`: same graph with horizontal `mean +/- SE` labels on each point.
+- `charts/png/*.png`: 300 DPI PNG renders of every generated PDF when using
+  `eval/scripts/render-saf-flow-latency-graphs.sh`.
 
 The representative flow is a chained PDU session establishment path. The
 external test client invokes only `smf-pdu-session-create`. That function then
@@ -404,6 +424,30 @@ uses the in-cluster SBI client to call `pcf-policy-create`,
 `chf-charging-create`, and `nsacf-update-counters`. This keeps the measured
 SAF path closer to a real function-to-function 5GC execution flow instead of
 directly invoking every service from the client.
+
+The middle SBI calls are synchronous and orchestrated by
+`smf-pdu-session-create`, so the SMF entry function is the total synchronous
+flow latency. The graphs label it as `smf-pdu-session-create (total)` instead
+of adding a separate summed `flow_total` category.
+
+`FLOW_PROFILE=relay` tests a longer existing implementation path:
+
+```text
+external client
+  -> amf-pdu-session-relay
+       -> smf-pdu-session-create
+            -> pcf-policy-create
+            -> nsacf-slice-availability-check
+            -> bsf-binding-register
+            -> chf-charging-create
+            -> nsacf-update-counters
+```
+
+The relay profile pre-provisions subscribers and registers the UEs before the
+measured queue-proxy log window starts, because `amf-pdu-session-relay` requires
+the UE to already be in `REGISTERED` state. The measured entrypoint is then
+`amf-pdu-session-relay`, and the graphs label it as
+`amf-pdu-session-relay (total)`.
 
 This comparison follows the SAF evaluation model: the script runs on an
 external machine, uses `kubectl` only to deploy/wait/read Knative Service URLs,
@@ -469,16 +513,43 @@ WARMUP=2 \
 eval/scripts/compare-saf-flow-latency.sh
 ```
 
-To regenerate summaries and PDF graphs later from a previous run without
-rerunning the tests:
+`SKIP_DEPLOY=true` also skips the clean uninstall step. Set
+`CLEAN_INSTALL=false` only when you intentionally want to apply a mode over the
+current Serverless5GC installation.
+
+To regenerate summaries, PDF graphs, and PNG renders later from a previous run
+without rerunning the tests, use the rendering wrapper:
 
 ```bash
-eval/scripts/plot-saf-flow-latency.py \
+eval/scripts/render-saf-flow-latency-graphs.sh \
   eval/results/saf-flow-latency/<existing-run-id>
 ```
 
-Pass any previous run directory as the positional argument if it is not under
-the default `eval/results/saf-flow-latency/` directory.
+The wrapper records and runs the graph-generation command used for the paper:
+
+```bash
+MPLCONFIGDIR=/tmp/matplotlib-serverless5gc \
+.venv/bin/python eval/scripts/plot-saf-flow-latency.py \
+  eval/results/saf-flow-latency/<existing-run-id> \
+  --step-width 13 \
+  --step-height 7 \
+  --summary-width 10 \
+  --summary-height 4 \
+  --comparison-width 6.5 \
+  --save-pad-inches 0.18
+```
+
+It then renders every PDF under `charts/` to `charts/png/` with:
+
+```bash
+pdftoppm -png -singlefile -r 300 <chart.pdf> charts/png/<chart-name>
+```
+
+The plotter accepts additional layout overrides, including `--font-scale`,
+`--comparison-width`, `--step-width`, `--step-height`, `--summary-width`,
+`--summary-height`, and `--save-pad-inches`. Display labels use `SAF` in
+uppercase even though internal mode IDs and result directories remain lowercase
+for compatibility.
 
 `BASELINE_QUEUE_PROXY_IMAGE` must point to the normal Knative queue-proxy image
 for your Knative installation. If it is omitted on a cluster already patched for

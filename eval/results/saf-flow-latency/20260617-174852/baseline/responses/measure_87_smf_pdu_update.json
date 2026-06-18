@@ -1,1 +1,0 @@
-{"id":"pdu-imsi-001010880000087-92","supi":"imsi-001010880000087","snssai":{"sst":1,"sd":"010203"},"dnn":"internet","pdu_type":"IPv4","ue_address":"10.45.45.164","upf_id":"upf:8805","state":"ACTIVE","qfi":2,"ambr_ul":2000000,"ambr_dl":6000000,"charging_id":"chg-imsi-001010880000087-92","bsf_binding_id":"bsf-imsi-001010880000087-92","created_at":"2026-06-17T16:53:06.650639537Z"}

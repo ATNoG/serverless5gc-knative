@@ -1,1 +1,0 @@
-{"supi":"imsi-001010880000491","auth_data":{"auth_method":"5G_AKA","k":"Rltc6LGZtJ+qXwou4jimvA==","opc":"6O0oneupUuQoO1TojmGDyg==","amf":"gAA=","sqn":"AAAAAAAg"},"access_mobility_data":{"nssai":[{"sst":1,"sd":"010203"}],"default_dnn":"internet"},"session_management":[{"snssai":{"sst":1,"sd":"010203"},"dnn":"internet","qos_ref":9}]}

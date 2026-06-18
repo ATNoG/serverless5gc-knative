@@ -101,7 +101,19 @@ python3 -m venv .venv
 python -m pip install -r eval/analysis/requirements.txt
 
 BASELINE_QUEUE_PROXY_IMAGE=<standard-knative-queue-image> \
-MODES="baseline saf" \
+MODES="baseline SAF" \
+FLOW_PROFILE=smf \
+ITERATIONS=30 \
+WARMUP=5 \
+eval/scripts/compare-saf-flow-latency.sh
+```
+
+To evaluate the existing AMF-to-SMF relay chain instead:
+
+```bash
+BASELINE_QUEUE_PROXY_IMAGE=<standard-knative-queue-image> \
+MODES="baseline SAF" \
+FLOW_PROFILE=relay \
 ITERATIONS=30 \
 WARMUP=5 \
 eval/scripts/compare-saf-flow-latency.sh
@@ -118,6 +130,14 @@ an in-cluster Kubernetes Job. The primary latency metric is not client elapsed
 time; it is parsed from the Knative queue-proxy log `"latency": "...s"` field,
 matching the original SAF latency tests. The external machine must have
 kubeapi access and network access to the Knative ingress.
+
+Before each `baseline` or `saf` experiment, the script performs a clean
+Serverless5GC reinstall by default. It deletes the existing Serverless5GC
+Knative Services, app Knative Eventing objects, Redis, etcd, UPF, SCTP proxy,
+and Redis/etcd PVCs, then deploys the requested mode again. This clears
+database state between the baseline and SAF measurements without removing the
+Knative or Kafka control-plane installations. Use `CLEAN_INSTALL=false` only
+when you intentionally want to reuse the existing core installation.
 
 If the Knative `status.url` values are not directly reachable, pass the ingress
 IP used by your SAF tests:
@@ -146,12 +166,38 @@ SKIP_DEPLOY=true \
 eval/scripts/compare-saf-flow-latency.sh
 ```
 
+`SKIP_DEPLOY=true` also skips the clean uninstall step. Set
+`CLEAN_INSTALL=false` only when you intentionally want to apply a mode over the
+current Serverless5GC installation.
+
 The script removes `networking.knative.dev/visibility=cluster-local` from the
 entry Knative Service and Route, if present, to ensure
 `smf-pdu-session-create` is public. Downstream services are called internally
 through Knative service DNS. Outputs are written to
 `eval/results/saf-flow-latency/<run-id>/` as diagnostic client trace,
 queue-proxy logs, queue-proxy latency CSV summaries, and seaborn PDF charts.
+Because the middle SBI calls are synchronous and SMF waits for them before
+returning, the orchestrating `smf-pdu-session-create` queue-proxy latency is the
+total synchronous flow latency. The graphs label it as
+`smf-pdu-session-create (total)`.
+
+With `FLOW_PROFILE=relay`, the measured existing implementation path is:
+
+```text
+external client
+  -> amf-pdu-session-relay
+       -> smf-pdu-session-create
+            -> pcf-policy-create
+            -> nsacf-slice-availability-check
+            -> bsf-binding-register
+            -> chf-charging-create
+            -> nsacf-update-counters
+```
+
+The relay profile pre-provisions subscribers and registers UEs before the
+measured log window starts, because the relay handler requires each UE context
+to be in `REGISTERED` state. The graphs label the relay entrypoint as
+`amf-pdu-session-relay (total)`.
 
 The queue-proxy logs collected for the chained flow are from
 `smf-pdu-session-create`, `pcf-policy-create`,
@@ -160,17 +206,38 @@ The queue-proxy logs collected for the chained flow are from
 
 Generated graph files are vector PDFs:
 
-- `charts/step_latency_mean.pdf`: point plot with per-step mean latency and standard error; `flow_total` is appended as the final category.
-- `charts/step_latency_difference.pdf`: point plot with mean `SAF - baseline` latency difference and standard error per step.
-- `charts/flow_total_latency.pdf`: summed queue-proxy latency across the representative flow.
+- `charts/step_latency_mean.pdf`: point plot with per-function mean latency and standard error; `smf-pdu-session-create (total)` is the orchestrating flow latency.
+- `charts/step_latency_mean_annotated.pdf`: same graph with `mean +/- SE` labels on each point.
+- `charts/step_latency_difference.pdf`: point plot with mean `SAF - baseline` latency difference and standard error per function; the `smf-pdu-session-create (total)` point is highlighted with a separate color.
+- `charts/step_latency_difference_annotated.pdf`: same graph with horizontal `mean +/- SE` labels on each point.
+- `charts/png/*.png`: 300 DPI PNG renders of every generated PDF when using
+  `eval/scripts/render-saf-flow-latency-graphs.sh`.
 
-Regenerate summaries and PDF graphs later from an existing run without rerunning
-the tests:
+Regenerate summaries, PDF graphs, and PNG renders later from an existing run
+without rerunning the tests:
 
 ```bash
-eval/scripts/plot-saf-flow-latency.py \
+eval/scripts/render-saf-flow-latency-graphs.sh \
   eval/results/saf-flow-latency/<existing-run-id>
 ```
+
+The wrapper uses the paper graph layout by default:
+
+```bash
+MPLCONFIGDIR=/tmp/matplotlib-serverless5gc \
+.venv/bin/python eval/scripts/plot-saf-flow-latency.py \
+  eval/results/saf-flow-latency/<existing-run-id> \
+  --step-width 13 \
+  --step-height 7 \
+  --summary-width 10 \
+  --summary-height 4 \
+  --comparison-width 6.5 \
+  --save-pad-inches 0.18
+```
+
+It then renders every generated PDF to `charts/png/` using `pdftoppm` at 300
+DPI. The graph display labels use uppercase `SAF`; internal mode IDs and
+directories remain lowercase for compatibility with the scripts.
 
 `BASELINE_QUEUE_PROXY_IMAGE` is required for a clean comparison when the cluster
 has previously been patched to use the SAF queue-proxy; otherwise the baseline

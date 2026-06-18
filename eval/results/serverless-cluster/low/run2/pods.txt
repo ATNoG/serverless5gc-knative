@@ -1,2 +1,0 @@
-NAME                       READY   STATUS   RESTARTS   AGE     IP           NODE                       NOMINATED NODE   READINESS GATES
-s5gc-eval-low-run2-chnqb   0/1     Error    0          4m31s   10.42.0.60   serverless5gc-controller   <none>           <none>

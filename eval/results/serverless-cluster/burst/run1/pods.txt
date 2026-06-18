@@ -1,2 +1,0 @@
-NAME                         READY   STATUS   RESTARTS   AGE   IP            NODE                   NOMINATED NODE   READINESS GATES
-s5gc-eval-burst-run1-84xqz   0/1     Error    0          17m   10.42.2.152   serverless5gc-worker   <none>           <none>
