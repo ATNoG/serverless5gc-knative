@@ -46,6 +46,7 @@ DEFAULT_FLOW_SERVICES = [
     "chf-charging-create",
     "nsacf-update-counters",
 ]
+ACRONYMS = {"amf", "ausf", "bsf", "chf", "nrf", "nsacf", "nssf", "pcf", "pdu", "smf", "udm", "udr", "upf"}
 
 
 @dataclass(frozen=True)
@@ -102,6 +103,17 @@ def step_order(services: list[str]) -> list[str]:
 
 def mode_label(mode: str) -> str:
     return "SAF" if mode.lower() == "saf" else mode
+
+
+def format_function_label(function_name: str, total: bool = False) -> str:
+    words = []
+    for part in re.split(r"[-_]+", function_name):
+        if not part:
+            continue
+        words.append(part.upper() if part.lower() in ACRONYMS else part.capitalize())
+    if total:
+        words.append("(Total)")
+    return "\n".join(words)
 
 
 def parse_logs(results_dir: Path, services: list[str], warmup: int, iterations: int | None) -> pd.DataFrame:
@@ -204,19 +216,20 @@ def write_charts(results_dir: Path, raw: pd.DataFrame, order_without_total: list
 
     order = [step for step in order_without_total if step in set(raw["step"])]
     total_step = order_without_total[0]
-    label_by_step = (
+    service_by_step = (
         raw.sort_values(["record_type", "step"])
         .drop_duplicates("step")
         .set_index("step")["service"]
         .to_dict()
     )
-    if total_step in label_by_step:
-        label_by_step[total_step] = f"{label_by_step[total_step]}\n(total)"
+    label_by_step = {
+        step: format_function_label(service, total=(step == total_step))
+        for step, service in service_by_step.items()
+    }
     plot_raw = raw.copy()
     plot_raw["function"] = plot_raw["step"].map(label_by_step).fillna(plot_raw["step"])
     plot_raw["mode_label"] = plot_raw["mode"].map(mode_label)
     function_order = [label_by_step.get(step, step) for step in order]
-    total_function = label_by_step.get(total_step, total_step)
     total_color = sns.color_palette("colorblind")[2]
 
     for annotated in (False, True):
@@ -239,18 +252,27 @@ def write_charts(results_dir: Path, raw: pd.DataFrame, order_without_total: list
         ax.tick_params(labelsize=12 * config.font_scale)
         ax.set_ylabel("Latency (ms)", labelpad=8)
         ax.set_xlabel("Function", labelpad=8)
-        plt.xticks(rotation=45, ha="right")
+        plt.xticks(rotation=0, ha="center")
         center_multiline_tick_labels(ax)
-        ax.legend(
+        set_ylim_with_annotation_headroom(
+            ax,
+            plot_raw,
+            "function",
+            "duration_ms",
+            function_order,
+            bottom=0.0,
+            hue_col="mode_label",
+            headroom_fraction=0.12,
+        )
+        if annotated:
+            annotate_points(ax, plot_raw, "function", "duration_ms", function_order, config, hue_col="mode_label", rotation=0)
+        place_legend_without_overlap(
+            ax,
             fontsize=12 * config.font_scale,
-            loc="upper center",
-            bbox_to_anchor=(0.32, 0.98),
             ncol=plot_raw["mode_label"].nunique(),
             title=None,
             frameon=True,
         )
-        if annotated:
-            annotate_points(ax, plot_raw, "function", "duration_ms", function_order, config, hue_col="mode_label", rotation=90)
         fig.tight_layout()
         suffix = "_annotated" if annotated else ""
         fig.savefig(charts_dir / f"step_latency_mean{suffix}.pdf", bbox_inches="tight", pad_inches=config.save_pad_inches)
@@ -286,18 +308,26 @@ def write_charts(results_dir: Path, raw: pd.DataFrame, order_without_total: list
             ax.tick_params(labelsize=12 * config.font_scale)
             ax.set_ylabel("Latency Difference (ms)", labelpad=8)
             ax.set_xlabel("Function", labelpad=8)
-            plt.xticks(rotation=45, ha="right")
+            plt.xticks(rotation=0, ha="center")
             center_multiline_tick_labels(ax)
-            ax.legend(
+            set_ylim_with_annotation_headroom(
+                ax,
+                diff,
+                "function",
+                "difference_ms",
+                diff_function_order,
+                bottom=0.0,
+                headroom_fraction=0.11,
+            )
+            if annotated:
+                annotate_points(ax, diff, "function", "difference_ms", diff_function_order, config, rotation=0)
+            place_legend_without_overlap(
+                ax,
                 fontsize=12 * config.font_scale,
-                loc="upper center",
-                bbox_to_anchor=(0.5, 0.98),
                 ncol=2,
                 title=None,
                 frameon=True,
             )
-            if annotated:
-                annotate_points(ax, diff, "function", "difference_ms", diff_function_order, config, rotation=0)
             fig.tight_layout()
             suffix = "_annotated" if annotated else ""
             fig.savefig(charts_dir / f"step_latency_difference{suffix}.pdf", bbox_inches="tight", pad_inches=config.save_pad_inches)
@@ -309,6 +339,104 @@ def write_charts(results_dir: Path, raw: pd.DataFrame, order_without_total: list
 def center_multiline_tick_labels(ax) -> None:
     for tick in ax.get_xticklabels():
         tick.set_multialignment("center")
+
+
+def set_ylim_with_annotation_headroom(
+    ax,
+    data: pd.DataFrame,
+    x_col: str,
+    y_col: str,
+    order: list[str],
+    bottom: float | None = None,
+    hue_col: str | None = None,
+    headroom_fraction: float = 0.12,
+) -> None:
+    y_min, y_max = ax.get_ylim()
+    plotted_max = None
+    hue_values = list(data[hue_col].drop_duplicates()) if hue_col else [None]
+    for x_value in order:
+        for hue_value in hue_values:
+            group = data[data[x_col] == x_value]
+            if hue_col:
+                group = group[group[hue_col] == hue_value]
+            values = group[y_col].astype(float)
+            if values.empty:
+                continue
+            aggregate_top = float(values.mean()) + stderr(values)
+            plotted_max = aggregate_top if plotted_max is None else max(plotted_max, aggregate_top)
+
+    plotted_max = y_max if plotted_max is None else plotted_max
+    lower = bottom if bottom is not None else y_min
+    base_span = max(plotted_max - lower, 1.0)
+    upper = plotted_max + base_span * headroom_fraction
+    if upper <= lower:
+        upper = lower + 1.0
+    if bottom is not None:
+        ax.set_ylim(bottom=bottom, top=upper)
+    else:
+        ax.set_ylim(top=upper)
+
+
+def place_legend_without_overlap(ax, **legend_kwargs) -> None:
+    handles, labels = ax.get_legend_handles_labels()
+    old_legend = ax.get_legend()
+    if old_legend is not None:
+        old_legend.remove()
+    if not handles:
+        return
+
+    figure = ax.figure
+    candidates = [
+        {"loc": "upper left"},
+        {"loc": "upper center"},
+        {"loc": "upper right"},
+        {"loc": "center left"},
+        {"loc": "center right"},
+        {"loc": "lower left"},
+        {"loc": "lower center"},
+        {"loc": "lower right"},
+        {"loc": "lower center", "bbox_to_anchor": (0.5, 1.02), "borderaxespad": 0.0},
+        {"loc": "upper center", "bbox_to_anchor": (0.5, -0.18), "borderaxespad": 0.0},
+    ]
+    figure.canvas.draw()
+    plotted_bboxes = []
+    renderer = figure.canvas.get_renderer()
+    for artist in ax.get_children():
+        if not artist.get_visible() or artist is ax.patch:
+            continue
+        try:
+            bbox = artist.get_window_extent(renderer)
+        except Exception:
+            continue
+        if bbox.width > 0 and bbox.height > 0:
+            plotted_bboxes.append(bbox)
+
+    best = None
+    best_overlap = float("inf")
+    best_index = len(candidates)
+    for index, candidate in enumerate(candidates):
+        legend = ax.legend(handles=handles, labels=labels, **legend_kwargs, **candidate)
+        figure.canvas.draw()
+        legend_bbox = legend.get_window_extent(figure.canvas.get_renderer()).expanded(1.03, 1.08)
+        overlap = sum(bbox_overlap_area(legend_bbox, bbox) for bbox in plotted_bboxes)
+        legend.remove()
+        if overlap < best_overlap:
+            best = candidate
+            best_overlap = overlap
+            best_index = index
+        if overlap == 0 and index < 8:
+            best = candidate
+            best_index = index
+            break
+
+    ax.legend(handles=handles, labels=labels, **legend_kwargs, **(best or candidates[best_index]))
+
+
+def bbox_overlap_area(first, second) -> float:
+    x_overlap = max(0.0, min(first.x1, second.x1) - max(first.x0, second.x0))
+    y_overlap = max(0.0, min(first.y1, second.y1) - max(first.y0, second.y0))
+    area = x_overlap * y_overlap
+    return area if math.isfinite(area) else 0.0
 
 
 def stderr(values: pd.Series) -> float:
@@ -327,7 +455,7 @@ def annotate_points(
 ) -> None:
     y_min, y_max = ax.get_ylim()
     y_span = y_max - y_min if y_max > y_min else 1.0
-    text_size = max(6, 7.5 * config.font_scale)
+    text_size = max(8, 10.5 * config.font_scale)
 
     if hue_col:
         hue_order = list(data[hue_col].drop_duplicates())
@@ -381,7 +509,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--step-height", type=float, default=STEP_SIZE[1], help="Height in inches for step latency graphs")
     parser.add_argument("--summary-width", type=float, default=SIZE[0], help="Width in inches for flow total graph")
     parser.add_argument("--summary-height", type=float, default=SIZE[1], help="Height in inches for flow total graph")
-    parser.add_argument("--font-scale", type=float, default=None, help="Override font scale; default is summary-width / comparison-width")
+    parser.add_argument("--font-scale", type=float, default=None, help="Override font scale; default is step-width / comparison-width")
     parser.add_argument("--save-pad-inches", type=float, default=0.12, help="Padding used when saving charts with tight bounding boxes")
     return parser.parse_args()
 
@@ -394,7 +522,7 @@ def main() -> int:
     iterations = int(iterations) if iterations is not None else None
     services = flow_services(metadata)
     order_without_total = step_order(services)
-    font_scale = args.font_scale if args.font_scale is not None else args.summary_width / args.comparison_width
+    font_scale = args.font_scale if args.font_scale is not None else args.step_width / args.comparison_width
     chart_config = ChartConfig(
         comparison_width=args.comparison_width,
         summary_size=(args.summary_width, args.summary_height),
