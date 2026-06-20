@@ -1,0 +1,1 @@
+2026/06/19 16:23:25 smf-pdu-session-create listening on :8080
