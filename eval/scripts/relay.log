@@ -1,1 +1,142 @@
 Uninstalling existing Serverless5GC core from namespace default
++ env NAMESPACE=default CLUSTER_DOMAIN=cluster.local REGISTRY=ghcr.io/atnog/serverless5gc-knative TAG=latest KAFKA_BOOTSTRAP_SERVERS=my-cluster-kafka-bootstrap.kafka:9092 QUEUE_PROXY_IMAGE=ghcr.io/atnog/serverless-workflow-firewall/queue:latest PATCH_SAF_QUEUE_PROXY=true /home/ubuntu/serverless5gc-knative/deploy/saf/deploy-saf.sh
+configmap/config-deployment patched (no change)
+configmap/config-features patched (no change)
+Knative Serving is configured to use SAF queue-proxy image: ghcr.io/atnog/serverless-workflow-firewall/queue:latest
+Rendering SAF-protected Knative Services
+Deploying Kubernetes-native infrastructure
+persistentvolumeclaim/redis-pvc created
+deployment.apps/redis created
+service/redis created
+persistentvolumeclaim/etcd-pvc created
+deployment.apps/etcd created
+service/etcd created
+configmap/upf-config created
+deployment.apps/upf created
+service/upf created
+deployment.apps/sctp-proxy created
+service/sctp-proxy created
+Deploying SAF-protected Knative procedure services
+Warning: Kubernetes default value is insecure, Knative may default this to secure in a future release: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation, spec.template.spec.containers[0].securityContext.capabilities, spec.template.spec.containers[0].securityContext.runAsNonRoot, spec.template.spec.containers[0].securityContext.seccompProfile
+service.serving.knative.dev/nrf-register created
+service.serving.knative.dev/nrf-discover created
+service.serving.knative.dev/nrf-status-notify created
+service.serving.knative.dev/amf-initial-registration created
+service.serving.knative.dev/amf-deregistration created
+service.serving.knative.dev/amf-service-request created
+service.serving.knative.dev/amf-pdu-session-relay created
+service.serving.knative.dev/amf-auth-initiate created
+service.serving.knative.dev/amf-handover created
+service.serving.knative.dev/smf-pdu-session-create created
+service.serving.knative.dev/smf-pdu-session-update created
+service.serving.knative.dev/smf-pdu-session-release created
+service.serving.knative.dev/smf-n4-session-setup created
+service.serving.knative.dev/udm-generate-auth-data created
+service.serving.knative.dev/udm-get-subscriber-data created
+service.serving.knative.dev/udr-data-read created
+service.serving.knative.dev/udr-data-write created
+service.serving.knative.dev/ausf-authenticate created
+service.serving.knative.dev/pcf-policy-create created
+service.serving.knative.dev/pcf-policy-get created
+service.serving.knative.dev/nssf-slice-select created
+service.serving.knative.dev/nwdaf-analytics-subscribe created
+service.serving.knative.dev/nwdaf-data-collect created
+service.serving.knative.dev/chf-charging-create created
+service.serving.knative.dev/chf-charging-update created
+service.serving.knative.dev/chf-charging-release created
+service.serving.knative.dev/nsacf-slice-availability-check created
+service.serving.knative.dev/nsacf-update-counters created
+service.serving.knative.dev/bsf-binding-register created
+service.serving.knative.dev/bsf-binding-discover created
+service.serving.knative.dev/bsf-binding-deregister created
+service.serving.knative.dev/eventlogger created
+Deploying Knative Eventing resources
+configmap/serverless5gc-kafka-broker-config created
+broker.eventing.knative.dev/default created
+trigger.eventing.knative.dev/serverless5gc-eventlogger created
+sinkbinding.sources.knative.dev/serverless5gc-functions-to-broker created
+sinkbinding.sources.knative.dev/serverless5gc-sctp-proxy-to-broker created
+Waiting for Kubernetes-native deployments
+Waiting for deployment "redis" rollout to finish: 0 of 1 updated replicas are available...
+deployment "redis" successfully rolled out
+Waiting for deployment "etcd" rollout to finish: 0 of 1 updated replicas are available...
+deployment "etcd" successfully rolled out
+deployment "upf" successfully rolled out
+deployment "sctp-proxy" successfully rolled out
+Waiting for SAF-protected Knative services
+service.serving.knative.dev/amf-auth-initiate condition met
+service.serving.knative.dev/amf-deregistration condition met
+service.serving.knative.dev/amf-handover condition met
+service.serving.knative.dev/amf-initial-registration condition met
+service.serving.knative.dev/amf-pdu-session-relay condition met
+service.serving.knative.dev/amf-service-request condition met
+service.serving.knative.dev/ausf-authenticate condition met
+service.serving.knative.dev/bsf-binding-deregister condition met
+service.serving.knative.dev/bsf-binding-discover condition met
+service.serving.knative.dev/bsf-binding-register condition met
+service.serving.knative.dev/chf-charging-create condition met
+service.serving.knative.dev/chf-charging-release condition met
+service.serving.knative.dev/chf-charging-update condition met
+service.serving.knative.dev/eventlogger condition met
+service.serving.knative.dev/nrf-discover condition met
+service.serving.knative.dev/nrf-register condition met
+service.serving.knative.dev/nrf-status-notify condition met
+service.serving.knative.dev/nsacf-slice-availability-check condition met
+service.serving.knative.dev/nsacf-update-counters condition met
+service.serving.knative.dev/nssf-slice-select condition met
+service.serving.knative.dev/nwdaf-analytics-subscribe condition met
+service.serving.knative.dev/nwdaf-data-collect condition met
+service.serving.knative.dev/pcf-policy-create condition met
+service.serving.knative.dev/pcf-policy-get condition met
+service.serving.knative.dev/smf-n4-session-setup condition met
+service.serving.knative.dev/smf-pdu-session-create condition met
+service.serving.knative.dev/smf-pdu-session-release condition met
+service.serving.knative.dev/smf-pdu-session-update condition met
+service.serving.knative.dev/udm-generate-auth-data condition met
+service.serving.knative.dev/udm-get-subscriber-data condition met
+service.serving.knative.dev/udr-data-read condition met
+service.serving.knative.dev/udr-data-write condition met
+Waiting for Kafka Broker
+broker.eventing.knative.dev/default condition met
+Serverless5GC SAF deployment complete.
+Protected service label: serverless5gc.knative.dev/saf-protected=true
++ kubectl wait ksvc -n default -l app.kubernetes.io/part-of=serverless5gc --for=condition=Ready --timeout=300s
+service.serving.knative.dev/amf-auth-initiate condition met
+service.serving.knative.dev/amf-deregistration condition met
+service.serving.knative.dev/amf-handover condition met
+service.serving.knative.dev/amf-initial-registration condition met
+service.serving.knative.dev/amf-pdu-session-relay condition met
+service.serving.knative.dev/amf-service-request condition met
+service.serving.knative.dev/ausf-authenticate condition met
+service.serving.knative.dev/bsf-binding-deregister condition met
+service.serving.knative.dev/bsf-binding-discover condition met
+service.serving.knative.dev/bsf-binding-register condition met
+service.serving.knative.dev/chf-charging-create condition met
+service.serving.knative.dev/chf-charging-release condition met
+service.serving.knative.dev/chf-charging-update condition met
+service.serving.knative.dev/eventlogger condition met
+service.serving.knative.dev/nrf-discover condition met
+service.serving.knative.dev/nrf-register condition met
+service.serving.knative.dev/nrf-status-notify condition met
+service.serving.knative.dev/nsacf-slice-availability-check condition met
+service.serving.knative.dev/nsacf-update-counters condition met
+service.serving.knative.dev/nssf-slice-select condition met
+service.serving.knative.dev/nwdaf-analytics-subscribe condition met
+service.serving.knative.dev/nwdaf-data-collect condition met
+service.serving.knative.dev/pcf-policy-create condition met
+service.serving.knative.dev/pcf-policy-get condition met
+service.serving.knative.dev/smf-n4-session-setup condition met
+service.serving.knative.dev/smf-pdu-session-create condition met
+service.serving.knative.dev/smf-pdu-session-release condition met
+service.serving.knative.dev/smf-pdu-session-update condition met
+service.serving.knative.dev/udm-generate-auth-data condition met
+service.serving.knative.dev/udm-get-subscriber-data condition met
+service.serving.knative.dev/udr-data-read condition met
+service.serving.knative.dev/udr-data-write condition met
+Preparing 20006 registered UEs for relay flow...
+Public Knative entrypoint for saf:
+  amf-pdu-session-relay: http://amf-pdu-session-relay.default.10.255.30.158.sslip.io
+Traceback (most recent call last):
+  File "/home/ubuntu/serverless5gc-knative/eval/scripts/plot-saf-flow-latency.py", line 16, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
