@@ -1,0 +1,1 @@
+2026/06/20 17:39:28 amf-pdu-session-relay listening on :8080
