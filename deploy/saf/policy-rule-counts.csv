@@ -1,4 +1,4 @@
-service,common_policy,common_rules,allowlist_rules,profile_rules,function_rules,total_rules,profiles
+﻿service,common_policy,common_rules,allowlist_rules,profile_rules,function_rules,total_rules,profiles
 amf-auth-initiate,post-json,2,1,1,1,5,supi
 amf-deregistration,post-json,2,1,1,1,5,supi
 amf-handover,post-json,2,1,1,1,5,supi

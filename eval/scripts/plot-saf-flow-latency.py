@@ -18,6 +18,7 @@ import pandas as pd
 COMPARISON = 6.5
 SIZE = (10, 3.5)
 STEP_SIZE = (12, 6.5)
+OUTLIER_IQR_MULTIPLIER = 1.5
 LAT_RE = re.compile(r'"latency":\s*"([0-9.]+)s"')
 
 SERVICE_TO_STEP = {
@@ -212,6 +213,8 @@ def write_charts(results_dir: Path, raw: pd.DataFrame, order_without_total: list
     (charts_dir / "saf_overhead_by_step.pdf").unlink(missing_ok=True)
     (charts_dir / "flow_total_latency.pdf").unlink(missing_ok=True)
     (charts_dir / "flow_total_latency_annotated.pdf").unlink(missing_ok=True)
+    (charts_dir / "step_latency_difference_boxplot.pdf").unlink(missing_ok=True)
+    (charts_dir / "step_latency_difference_boxplot_annotated.pdf").unlink(missing_ok=True)
     sns.set(style="whitegrid")
 
     order = [step for step in order_without_total if step in set(raw["step"])]
@@ -229,6 +232,7 @@ def write_charts(results_dir: Path, raw: pd.DataFrame, order_without_total: list
     plot_raw = raw.copy()
     plot_raw["function"] = plot_raw["step"].map(label_by_step).fillna(plot_raw["step"])
     plot_raw["mode_label"] = plot_raw["mode"].map(mode_label)
+    plot_raw = filter_outliers_iqr(plot_raw, ["function", "mode_label"], "duration_ms")
     function_order = [label_by_step.get(step, step) for step in order]
     total_color = sns.color_palette("colorblind")[2]
 
@@ -286,6 +290,7 @@ def write_charts(results_dir: Path, raw: pd.DataFrame, order_without_total: list
         diff = diff.copy()
         diff["function"] = diff["step"].map(label_by_step).fillna(diff["step"])
         diff["difference_group"] = diff["step"].apply(lambda step: "Total" if step == total_step else "Function")
+        diff = filter_outliers_iqr(diff, ["function"], "difference_ms")
         for annotated in (False, True):
             fig, ax = plt.subplots(figsize=config.step_size)
             ax = sns.pointplot(
@@ -333,6 +338,52 @@ def write_charts(results_dir: Path, raw: pd.DataFrame, order_without_total: list
             fig.savefig(charts_dir / f"step_latency_difference{suffix}.pdf", bbox_inches="tight", pad_inches=config.save_pad_inches)
             plt.close()
 
+        for annotated in (False, True):
+            fig, ax = plt.subplots(figsize=config.step_size)
+            ax = sns.boxplot(
+                data=diff,
+                x="function",
+                y="difference_ms",
+                hue="difference_group",
+                hue_order=["Total", "Function"],
+                order=diff_function_order,
+                palette=[total_color, sns.color_palette("colorblind")[0]],
+                dodge=False,
+                width=0.55,
+                linewidth=1.2,
+                showfliers=False,
+                ax=ax,
+            )
+            ax.axhline(0, color="black", linewidth=0.8)
+            ax.yaxis.label.set_fontsize(15 * config.font_scale)
+            ax.xaxis.label.set_fontsize(15 * config.font_scale)
+            ax.tick_params(labelsize=12 * config.font_scale)
+            ax.set_ylabel("Latency Difference (ms)", labelpad=8)
+            ax.set_xlabel("Function", labelpad=8)
+            plt.xticks(rotation=0, ha="center")
+            center_multiline_tick_labels(ax)
+            set_difference_ylim(
+                ax,
+                diff,
+                "function",
+                "difference_ms",
+                diff_function_order,
+                headroom_fraction=0.11,
+            )
+            if annotated:
+                annotate_boxplot_stats(ax, diff, "function", "difference_ms", diff_function_order, config)
+            place_legend_without_overlap(
+                ax,
+                fontsize=12 * config.font_scale,
+                ncol=2,
+                title=None,
+                frameon=True,
+            )
+            fig.tight_layout()
+            suffix = "_annotated" if annotated else ""
+            fig.savefig(charts_dir / f"step_latency_difference_boxplot{suffix}.pdf", bbox_inches="tight", pad_inches=config.save_pad_inches)
+            plt.close()
+
     print(f"Wrote PDF charts under {charts_dir}")
 
 
@@ -375,6 +426,28 @@ def set_ylim_with_annotation_headroom(
         ax.set_ylim(bottom=bottom, top=upper)
     else:
         ax.set_ylim(top=upper)
+
+
+def set_difference_ylim(
+    ax,
+    data: pd.DataFrame,
+    x_col: str,
+    y_col: str,
+    order: list[str],
+    headroom_fraction: float = 0.12,
+) -> None:
+    values = data[data[x_col].isin(order)][y_col].astype(float)
+    if values.empty:
+        return
+
+    data_min = min(float(values.min()), 0.0)
+    data_max = max(float(values.max()), 0.0)
+    y_span = max(data_max - data_min, 1.0)
+    lower = data_min - y_span * 0.08
+    upper = data_max + y_span * headroom_fraction
+    if upper <= lower:
+        upper = lower + 1.0
+    ax.set_ylim(bottom=lower, top=upper)
 
 
 def place_legend_without_overlap(ax, **legend_kwargs) -> None:
@@ -443,6 +516,34 @@ def stderr(values: pd.Series) -> float:
     return float(values.std(ddof=1) / math.sqrt(len(values))) if len(values) > 1 else 0.0
 
 
+def filter_outliers_iqr(
+    data: pd.DataFrame,
+    group_cols: list[str],
+    value_col: str,
+    multiplier: float = OUTLIER_IQR_MULTIPLIER,
+) -> pd.DataFrame:
+    if data.empty:
+        return data
+
+    kept = []
+    for _, group in data.groupby(group_cols, sort=False, dropna=False):
+        values = group[value_col].astype(float)
+        if len(values) < 4:
+            kept.append(group)
+            continue
+        q1 = values.quantile(0.25)
+        q3 = values.quantile(0.75)
+        iqr = q3 - q1
+        if iqr <= 0:
+            kept.append(group)
+            continue
+        lower = q1 - multiplier * iqr
+        upper = q3 + multiplier * iqr
+        kept.append(group[(values >= lower) & (values <= upper)])
+
+    return pd.concat(kept, ignore_index=True) if kept else data.iloc[0:0].copy()
+
+
 def annotate_points(
     ax,
     data: pd.DataFrame,
@@ -496,6 +597,36 @@ def annotate_points(
                 fontsize=text_size,
                 rotation=rotation,
             )
+
+
+def annotate_boxplot_stats(
+    ax,
+    data: pd.DataFrame,
+    x_col: str,
+    y_col: str,
+    order: list[str],
+    config: ChartConfig,
+) -> None:
+    y_min, y_max = ax.get_ylim()
+    y_span = y_max - y_min if y_max > y_min else 1.0
+    text_size = max(8, 10.5 * config.font_scale)
+
+    for x_index, x_value in enumerate(order):
+        values = data[data[x_col] == x_value][y_col].astype(float)
+        if values.empty:
+            continue
+        median = float(values.median())
+        q1 = float(values.quantile(0.25))
+        q3 = float(values.quantile(0.75))
+        ax.text(
+            x_index,
+            q3 + 0.025 * y_span,
+            f"{median:.2f} ms\nIQR {q1:.2f}-{q3:.2f}",
+            ha="center",
+            va="bottom",
+            fontsize=text_size,
+            rotation=0,
+        )
 
 
 def parse_args() -> argparse.Namespace:
