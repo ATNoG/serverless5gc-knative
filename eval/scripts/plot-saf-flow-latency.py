@@ -18,7 +18,7 @@ import pandas as pd
 COMPARISON = 6.5
 SIZE = (10, 3.5)
 STEP_SIZE = (12, 6.5)
-OUTLIER_IQR_MULTIPLIER = 1.5
+OUTLIER_IQR_MULTIPLIER = 0          # 1.5
 LAT_RE = re.compile(r'"latency":\s*"([0-9.]+)s"')
 
 SERVICE_TO_STEP = {
