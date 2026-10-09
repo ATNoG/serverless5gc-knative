@@ -2,7 +2,11 @@
 
 Serverless5GC is a serverless 5G core network implementation using Procedure-as-a-Function decomposition on Knative. It maps 31 individual 3GPP procedures across 12 network functions (Release 15-17) to independent Knative Services that can scale to zero when idle.
 
-**Paper:** [Serverless5GC: Private 5G Core Deployment via a Procedure-as-a-Function Architecture](https://arxiv.org/abs/2603.27618)
+## Origin and Purpose
+
+This repository reimplements [the original Serverless5GC](https://github.com/haidinhtuan/serverless5gc) on Knative to support experiments with [SAF](https://github.com/ATNoG/saf). The original project targets OpenFaaS, while SAF is built around Knative, so the original implementation could not be used directly for these experiments. This version keeps the same procedure-as-a-function design and adds the Knative deployment and SAF evaluation support needed for that work.
+
+This repository retains the original project's Apache-2.0 license.
 
 ## Architecture
 
